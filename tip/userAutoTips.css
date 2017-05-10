@@ -1,0 +1,41 @@
+.recipients-tips{ 
+	position:absolute; 
+	background: #fff;
+	z-index:2147483647; 
+	padding:2px; 
+	border: 1px solid #ececec;
+	display:none;
+	box-shadow: 0 0 10px #cdcdcd;
+}
+
+.recipients-tips .pop_title {
+	display: inline-block;
+	width: 100%;
+	line-height: 30px;
+	border-bottom: solid 1px #cdcdcd;
+}
+
+.recipients-tips #autoTipsUserList {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	margin-top: 10px;
+}
+
+.recipients-tips li a{
+	display:block; 
+	padding:2px 5px; 
+	color:#333; 
+	cursor:pointer;
+	text-decoration: none;
+	line-height: 25px;
+}
+
+.recipients-tips li a em{
+	font-weight:700; 
+	color:#000; 
+}
+
+.autoSelected{
+	background:#b8c796; 
+}

@@ -1,0 +1,62 @@
+<html>
+<head>
+	<title>test</title>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="./userAutoTips.css">
+</head>
+<body>
+
+	<textarea id="tt"></textarea>
+
+	<textarea id="dd"></textarea>
+
+</body>
+<script type="text/javascript" src="../tip/userAutoTips.js"></script>
+<script type="text/javascript">
+	keywordPop.init({
+		"id": "tt",	//页面元素ID
+		"len": 10,	//提示框每次显示的数据上限
+		"title": "选择最近@的人或直接输入",	//提示框标题
+		"post": function(value) {	//获取要显示的数据
+			var friendsData = [
+				{key:"FLY100",value:"完全"},
+				{key:"G_9o_Karr",value:"\u4e01\u6208"},
+				{key:"LV5203344",value:"\u8463\u52c7"},
+				{key:"VIVI520007",value:"\u8587\u8587"},
+				{key:"WDQ826343036",value:"\u5434\u4e1c\u5f3a"},
+				{key:"ZZ-20100912",value:"\u5218\u73cd"},
+				{key:"aa394378840",value:"\u9c81\u5229"},
+				{key:"airiafans",value:"\u7231RIA\u96c6\u7ed3\u53f7"},
+				{key:"alilya",value:"\u9875\u9762\u59b9_\u9648\u601d\u5e06"},
+				{key:"amity1985",value:"\u7231\u5fb7\u57fa\u91d1\u4f1a"},
+				{key:"aoi_sola",value:"\u82cd\u4e95\u8001\u5e08"},
+				{key:"austinjin",value:"AustinGeek"}
+			];
+			return friendsData;
+		}
+	});
+
+	keywordPop.init({
+		"id": "dd",	//页面元素ID
+		"len": 10,	//提示框每次显示的数据上限
+		"title": "选择最近@的人或直接输入",	//提示框标题
+		"post": function(value) {	//获取要显示的数据
+			var friendsData = [
+				{key:"FLY100",value:"完全"},
+				{key:"G_9o_Karr",value:"\u4e01\u6208"},
+				{key:"LV5203344",value:"\u8463\u52c7"},
+				{key:"VIVI520007",value:"\u8587\u8587"},
+				{key:"WDQ826343036",value:"\u5434\u4e1c\u5f3a"},
+				{key:"ZZ-20100912",value:"\u5218\u73cd"},
+				{key:"aa394378840",value:"\u9c81\u5229"},
+				{key:"airiafans",value:"\u7231RIA\u96c6\u7ed3\u53f7"},
+				{key:"alilya",value:"\u9875\u9762\u59b9_\u9648\u601d\u5e06"},
+				{key:"amity1985",value:"\u7231\u5fb7\u57fa\u91d1\u4f1a"},
+				{key:"aoi_sola",value:"\u82cd\u4e95\u8001\u5e08"},
+				{key:"austinjin",value:"AustinGeek"}
+			];
+			return friendsData;
+		}
+	});
+</script>
+</html>
