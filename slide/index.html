@@ -1,0 +1,68 @@
+<html>
+<head>
+	<meta charset="utf8">
+	<title>slide</title>
+	<link rel="stylesheet" type="text/css" href="./slide.css">
+	<style type="text/css">
+		#slide {
+		    width: 500px;
+		    height: 300px;
+		}
+	</style>
+</head>
+<body>
+<div id="slide"></div>
+<br />
+<a href="javascript:void(0);" onclick="add()">增加一张图片</a>
+<a href="javascript:void(0);" onclick="reduce()">删除－张图片</a>
+<a href="javascript:void(0);" onclick="getImageCount()">获取图片数量</a>
+<a href="javascript:void(0);" onclick="getImages()">获取所有图片</a>
+<a href="javascript:void(0);" onclick="getImageByIndex()">获取任意图片</a>
+<a href="javascript:void(0);" onclick="getCurrentImage()">获取当前图片</a>
+<a href="javascript:void(0);" onclick="getPreImage()">获取前一张图片</a>
+<a href="javascript:void(0);" onclick="getNextImage()">获取下一张图片</a>
+</body>
+<script type="text/javascript" src="./slide.js"></script>
+<script type="text/javascript">
+var slideObj = slide.init({
+	"id": "slide",
+	"basePath": "./",
+	"images": ["photo1.jpg", "photo2.jpg", "photo3.jpg", "photo4.jpg", "photo5.jpg"],
+	"presentShow": function(present) {
+		console.log(present);
+	}
+});
+
+function add() {
+	slideObj.addImage("photo6.jpg");
+};
+
+function reduce() {
+	slideObj.delImage("photo5.jpg");
+}
+
+function getImageCount() {
+	console.log(slideObj.getImageCount());
+}
+
+function getImages() {
+	console.log(slideObj.getImages());
+}
+
+function getImageByIndex() {
+	console.log(slideObj.getImageByIndex(8));
+}
+
+function getCurrentImage() {
+	console.log(slideObj.getCurrentImage());
+}
+
+function getPreImage() {
+	console.log(slideObj.getPreImage());
+}
+
+function getNextImage() {
+	console.log(slideObj.getNextImage());
+}
+</script>
+</html>

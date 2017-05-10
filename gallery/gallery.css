@@ -1,0 +1,56 @@
+.rollBox{
+    width: 956px;
+    overflow: hidden;
+    display: table;
+    -webkit-user-select:none;
+	-moz-user-select:none;
+	-ms-user-select:none;
+	user-select:none;
+}
+
+.rollBox .LeftBotton, .rollBox .RightBotton{
+    width: 28px;
+    overflow: hidden;
+    cursor: pointer;
+	display: table-cell;
+	vertical-align: middle;
+	text-align: center;
+	background: #cdcdcd;
+	font-weight: bold;
+	font-size: 50px;
+	color: #fff;
+}
+
+.rollBox .LeftBotton:hover, .rollBox .RightBotton:hover {
+	color: #5CACEE
+}
+
+.rollBox .Cont{
+    width: 900px;
+    overflow: hidden;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.rollBox .ScrCont{
+    width: 10000000px;
+}
+
+.rollBox .Cont .pic{
+    width: 232px;
+    height: 122px;
+    float: left;
+    text-align: center;
+}
+
+.rollBox .Cont .pic img{
+    padding: 4px;
+    background: #fff;
+    border: 1px solid #ccc;
+    display: block;
+    margin: 0 auto;
+}
+
+.rollBox #List1, .rollBox #List2{
+    float: left;
+}
