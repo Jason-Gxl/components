@@ -70,7 +70,7 @@
         }
 
         _gallery.prototype = {
-            "constructor": this,
+            constructor: _gallery,
             pre: function() {
                 var self = this;
                 if(self.original.MoveLock) {
@@ -98,10 +98,9 @@
                 }
                 self.original.MoveLock = true;
                 ISL_ScrDown(self.original.Space);
-                self.original.MoveTimeObj = setInterval(
-                    function() {
-                        ISL_ScrDown(self.original.Space);
-                    }, self.original.Speed);
+                self.original.MoveTimeObj = setInterval(function() {
+                    ISL_ScrDown(self.original.Space);
+                }, self.original.Speed);
             },
             stopPre: function() {
                 var self = this;
