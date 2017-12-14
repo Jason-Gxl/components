@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>MusicPlayer</title>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="./music.css">
+	<link rel="stylesheet" type="text/css" href="./icons/iconfont.css">
+	<style type="text/css">
+		html, body {
+			height: 100%;
+			width: 100%;
+			padding: 0; 
+			margin: 0;
+		}
+
+		.player-wrap {
+			height: 100%;
+		}
+	</style>
+</head>
+<body>
+	<div id="music_player_wrap" class="player-wrap"></div>
+</body>
+<script type="text/javascript" src="./music.js"></script>
+<script type="text/javascript">
+	mp.init({
+		wrap: document.getElementById("music_player_wrap"),
+		musics: [{name: 1, url: "./1.mp3"}]
+	});
+</script>
+</html>

@@ -1,0 +1,129 @@
+ul, li, div, a {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	text-decoration: none;
+}
+
+a:active {
+	color: none;
+}
+
+.multi-select-wrap {
+	display: table;
+	width: 100%;
+	min-height: 200px;
+}
+
+.multi-select-wrap .multi-select-left {
+	display: table-cell;
+	width: 40%;
+	border: solid 1px #cdcdcd;
+	border-radius: 5px;
+	overflow: hidden;
+	padding: 0 5px;
+}
+
+.multi-select-wrap .multi-select-ctrl {
+	display: table-cell;
+	width: 20%;
+	vertical-align: middle;
+	text-align: center;
+}
+
+.multi-select-wrap .multi-select-right {
+	display: table-cell;
+	width: 40%;
+	border: solid 1px #cdcdcd;
+	border-radius: 5px;
+	overflow: hidden;
+	padding: 0 5px;
+}
+
+.multi-select-wrap li ul {
+	margin-left: 30px;
+}
+
+.multi-select-wrap .multi-select-ctrl a {
+	display: inline-block;
+	border: solid 1px #cdcdcd;
+	padding: 5px 12px;
+	border-radius: 5px;
+	color: #444;
+}
+
+.multi-select-wrap li span {
+	display: inline-block;
+	width: 100%;
+	position: relative;
+	line-height: 25px;
+	box-sizing: border-box;
+	margin: 1px 0;
+}
+
+.multi-select-wrap li label:hover {
+	background: #cecece;
+	cursor: pointer;
+}
+
+.multi-select-wrap .hide-child ul {
+	display: none;
+}
+
+.multi-select-wrap li .selected {
+	background: #cdcdcd;
+	border-color: #999;
+}
+
+.multi-select-wrap .hide-child i {
+	width: 0;
+    display: inline-block;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 10px solid #444;
+}
+
+.multi-select-wrap i {
+	width: 0;
+    height: 0;
+    display: inline-block;
+    border-top: 10px solid black;
+    border-right: 8px solid transparent;
+    border-left: 8px solid transparent;
+    cursor: pointer;
+}
+
+.multi-select-wrap li span label {
+	display: inline-block;
+	padding: 0 6px;
+	border-radius: 2px;
+	border: dashed 1px transparent;
+}
+
+.multi-select-wrap .no-child i {
+	display: none;
+}
+
+.multi-select-wrap .multi-select-center {
+	display: table-cell;
+	width: 20%;
+	box-sizing: border-box;
+	vertical-align: middle;
+	text-align: center;
+}
+
+.multi-select-wrap .multi-select-center .ctrl-btn {
+	display: inline-block;
+	border: solid 1px #cdcdcd;
+	padding: 3px 0;
+	width: 80px;
+	margin: 5px;
+	border-radius: 5px;
+	color: #444;
+}
+
+.multi-select-wrap .multi-select-center .ctrl-btn:hover {
+	background: #1AC740;
+	color: #fff;
+}

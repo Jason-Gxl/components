@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>MultiSelect</title>
+	<link rel="stylesheet" type="text/css" href="./multi_select.css">
+</head>
+<body>
+	<div id="multi_select_wrap"></div>
+</body>
+<script type="text/javascript" src="../tool.js"></script>
+<script type="text/javascript" src="./multi_select.js"></script>
+<script type="text/javascript">
+	var data = [{id: 1, name: "中国"}, {id:4, name: "codyy", pId:1}, {id: 2, name: "Jason", pId: "4"}, {id: 3, name: "Tom", pId: "4"}];
+
+	var multiSelectObj = multiSelect.init({
+		name: "1",
+		data: data,
+		selected: {id: 2, name: "Jason"},
+		nexus: "pId",
+		key: "id",
+		show: "name",
+		getFun: function() {},
+		multiple: true,
+		wrap: document.getElementById("multi_select_wrap")
+	});
+</script>
+</html>
