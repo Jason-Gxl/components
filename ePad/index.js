@@ -18,7 +18,11 @@
 			wrap: document.body,
 			autoSaveTime: 10,
 			saveImgStep: 5,
-			toolbars: ["pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear", "color"]
+			color: "#000",
+			background: "#fff",
+			eraserSize: 5,
+			ferulaSize: 5,
+			toolbars: ["ferula", "pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear", "color"]
 			//toolbars: ["ferula", "ellipesstroke", "rectstroke", "pen", "eraser", "rect", "ellipes", "text", "line", "arrow", "color", "export", "scissors", "clear", "enlarge", "file", "handPad"]
 		},
 		childToolbars = {
@@ -473,6 +477,19 @@
 				ctx.stroke();
 			}
 		},
+		ferula: function(params) {
+			var self = this,
+				canvas = self.mouseIconCanvas,
+				data = params.data,
+				ferulaSize = self.params.ferulaSize,
+				ctx = canvas.getContext("2d");
+
+			canvas.width = canvas.width;
+			ctx.beginPath();
+			ctx.fillStyle = "red";
+			ctx.arc(data[0], data[1], ferulaSize, 0, 2*Math.PI);
+			ctx.fill();
+		},
 		render: function(_data) {
 			var self = this,
 				type = _data.type;
@@ -633,10 +650,6 @@
 			return new WPad(params);
 		}
 
-		params.color = "#000";
-		params.background = params.background || "#fff";
-		params.eraserSize = 5;
-
 		var that = {
 			pad: this,
 			params: params,
@@ -665,6 +678,19 @@
 			},
 			mouseRender: function(_data) {
 				mouse.render.call(that, _data);
+				_data.width = that.mainCanvas.width;
+				_data.height = that.mainCanvas.height;
+
+				if(params.mousemove) {
+					var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
+
+					obj[activeTab.id] = {
+						data: outData,
+						type: activeTab.type
+					};
+
+					params.mousemove(obj);
+				}
 			}
 		};
 		
@@ -714,6 +740,32 @@
 			}
 		};
 
+		var renderMouse = function(_data) {
+			var scaleWidth = null,
+				scaleHeight = null;
+
+			for(var key in _data) {
+				var val = _data[key],
+					type = val.type,
+					val = val.data;
+
+				if(!scaleWidth || !scaleHeight) {
+					scaleWidth = that.mainCanvas.width/val.width;
+					scaleHeight = that.mainCanvas.height/val.height;
+				}
+
+				switch(val.type) {
+					default:
+					if(val.data[0]) val.data[0] = !isNaN(val.data[0])?val.data[0] * scaleWidth:val.data[0];
+					if(val.data[1]) val.data[1] = !isNaN(val.data[1])?val.data[1] * scaleWidth:val.data[1];
+					if(val.data[2]) val.data[2] = !isNaN(val.data[2])?val.data[2] * scaleWidth:val.data[2];
+					if(val.data[3]) val.data[3] = !isNaN(val.data[3])?val.data[3] * scaleWidth:val.data[3];
+				}
+
+				mouse.render.call(that, val);
+			}
+		};
+
 		this.render = function(_data) {
 			if("[object Object]"!=toString.call(_data)) {
 				console.error("TypeError: data must be Object");
@@ -732,6 +784,15 @@
 			dataArr.forEach(function(_data) {
 				render(_data);
 			});
+		};
+
+		this.mouseCtrl = function(_data) {
+			if("[object Object]"!=toString.call(_data)) {
+				console.error("TypeError: data must be Object");
+				return ;
+			}
+
+			renderMouse(_data);
 		};
 
 		this.clear = function(number) {
@@ -994,7 +1055,7 @@
 				e = args[0] || window.event,
 				rect = this.getBoundingClientRect(),
 				item = current.name.toLowerCase(),
-				pos = {x:e.clientX-rect.x, y:e.clientY-rect.y};
+				pos = {x:e.clientX-(rect.x || rect.left), y:e.clientY- (rect.y || rect.top)};
 
 			if(handPad || active) {
 				switch(item) {
@@ -1025,11 +1086,11 @@
 				rect = this.getBoundingClientRect(),
 				lastSpan = toolbarWrap.getElementsByClassName("selected-item")[0],
 				e = args[0] || window.event,
-				pos = {x:e.clientX-rect.x, y:e.clientY-rect.y};
+				pos = {x:e.clientX-(rect.x || rect.left), y:e.clientY- (rect.y || rect.top)};
 
 			active = true;
 			ele.removeClass(lastSpan, "selected-item");
-			current && current.bufferRender.call(self, pos, true);
+			current && current.bufferRender && current.bufferRender.call(self, pos, true);
 
 			if(window.event) {
 				e.returnValue = false;
