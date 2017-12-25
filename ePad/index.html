@@ -38,15 +38,19 @@
 <script type="text/javascript" src="./js/text.js"></script>
 <script type="text/javascript" src="./js/image.js"></script>
 <script type="text/javascript" src="./js/eraser.js"></script>
+<script type="text/javascript" src="./js/ferula.js"></script>
 <script type="text/javascript" src="./index.js"></script>
 <script type="text/javascript">
 var pad1 = wPad.init({
 	id: 1,
 	wrap: document.getElementById("pad1"),
-	background: "",
+	background: "#fff",
 	autoSaveTime: 5,
 	render: function(data) {
 		//pad2.render(data);
+	},
+	mousemove: function(data) {
+		//pad2.mouseCtrl(data);
 	},
 	clear: function(id) {
 		console.log("clear------"+id);
@@ -56,11 +60,14 @@ var pad1 = wPad.init({
 /*var pad2 = wPad.init({
 	id: 2,
 	wrap: document.getElementById("pad2"),
-	background: "",
+	background: "#fff",
 	autoSaveTime: 10,
 	render: function(data) {
 		console.log(data);
 		pad1.render(data);
+	},
+	mousemove: function(data) {
+		console.log(data);
 	},
 	clear: function(id) {
 		console.log("clear------"+id);

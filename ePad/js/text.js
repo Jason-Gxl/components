@@ -28,18 +28,15 @@
 			if("[object String]"!=Object.prototype.toString.call(content)) return ;
 			content = content.replace(/^\s*|\s*$/, "");
 			if(!content) return ;
-			var self = this, data = self.current.interimBuffer.shift();
+			var self = this, data = self.current.interimBuffer.pop();
 			if(!data) return ;
 			data.data.push(content);
 			self.textInput.value = "";
 			self.textInput.removeAttribute("style");
-
-			do {
-				data.status = 1;
-				self.current.buffer.push(data);
-				self.render(data);
-				data = self.current.interimBuffer.shift();
-			} while(data);
+			data.status = 1;
+			self.current.buffer.push(data);
+			self.render(data);
+			self.current.interimBuffer.length = 0;
 		}
 	};
 

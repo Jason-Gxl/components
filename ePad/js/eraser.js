@@ -42,14 +42,14 @@
 		bufferRender: function(data) {
 			if(!data) return ;
 			var self = this, _data = [data.x, data.y, self.params.eraserSize/2];
-			data = {type: "eraser", data: _data, status: 1, mode: modeMap[self.current.name], origin: !!origin, from: self.params.id};
+			data = {type: "eraser", data: _data, status: 1, mode: modeMap[self.current.name], from: self.params.id};
 			self.current.buffer.push(data);
 			self.render(data);
 		},
 		render: function(data) {
 			if(!data) return ;
 			var self = this, _data = [data.x, data.y, self.params.eraserSize/2];
-			data = {type: "eraser", data: _data, status: 1, mode: modeMap[self.current.name], origin: !!origin, from: self.params.id};
+			data = {type: "eraser", data: _data, status: 1, mode: modeMap[self.current.name], from: self.params.id};
 			self.current.buffer.push(data);
 			self.render(data);
 		}
