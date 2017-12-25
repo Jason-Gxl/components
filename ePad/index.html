@@ -44,7 +44,7 @@
 var pad1 = wPad.init({
 	id: 1,
 	wrap: document.getElementById("pad1"),
-	background: "#fff",
+	background: "black",
 	autoSaveTime: 5,
 	render: function(data) {
 		//pad2.render(data);
@@ -57,14 +57,14 @@ var pad1 = wPad.init({
 	}
 });
 
-/*var pad2 = wPad.init({
+var pad2 = wPad.init({
 	id: 2,
 	wrap: document.getElementById("pad2"),
 	background: "#fff",
 	autoSaveTime: 10,
 	render: function(data) {
 		console.log(data);
-		pad1.render(data);
+		//pad1.render(data);
 	},
 	mousemove: function(data) {
 		console.log(data);
@@ -72,6 +72,6 @@ var pad1 = wPad.init({
 	clear: function(id) {
 		console.log("clear------"+id);
 	}
-});*/
+});
 </script>
 </html>

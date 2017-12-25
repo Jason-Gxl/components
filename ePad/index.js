@@ -360,6 +360,7 @@
 			}
 			
 			ctx.beginPath();
+			ctx.fillStyle = params.color;
 			ctx.fillText(data[2], data[0], data[1]);
 			callback && callback();
 		},
@@ -1134,7 +1135,7 @@
 		ele.addEvent(document, "mouseup", function() {
 			if(active) {
 				active = false;
-				current && current.render.call(self);
+				current && current.render && current.render.call(self);
 			}
 		});
 
@@ -1142,7 +1143,7 @@
 			var args = [].slice.call(arguments, 0),
 				e = args[0] || window.event;
 			active = false;
-			current && current.render.call(self);
+			current && current.render && current.render.call(self);
 
 			if(window.event) {
 				e.returnValue = false;
@@ -1160,7 +1161,8 @@
 		self.bufferCanvas = bufferCanvas1;
 
 		if(!_data) {
-			self.tab.build.call(self, mainCanvas, 0);
+			var _n = self.tab.build.call(self, mainCanvas, 0);
+			self.tab.active.call(self, _n);
 		} else {
 			for(var key in _data) {
 				var val = _data[key];
