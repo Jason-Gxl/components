@@ -131,6 +131,9 @@
 		},
 		nextNode: function(ele) {
 			return ele.nextElementSibling || ele.nextSibling;
+		},
+		css: function(ele, attrName, attrValue) {
+			ele.style[attrName] = attrValue || "";
 		}
 	};
 
@@ -513,7 +516,7 @@
 				return _step;
 			}());
 
-			self.build = function(canvas, type, _data, isShow, del) {
+			self.build = function(canvas, type, _data, del) {
 				if(!canvas) return ;
 				var that = this,
 					_number = number,
@@ -524,71 +527,52 @@
 
 				tabMap[_number] = li;
 				dataMap[_number] = _data || [];
-				canvasMap[_number] = canvas;				
+				canvasMap[_number] = canvas;
 
 				if(del) {
 					ele.addEvent(li.getElementsByTagName("i")[0], "click", function() {
+						var args = [].slice.call(arguments, 0),
+						 	e = args[0] || window;
+
 						delete tabMap[_number];
 						delete dataMap[_number];
 						delete canvasMap[_number];
+						delete that.container[_number];
 						tabWrap.removeChild(li);
-
 						_number = _number - 1;
-						var tab = tabMap[_number];
-						var _data = dataMap[_number];
-						var canvas = canvasMap[_number];
-						ele.addClass(tab, "active");
-
-						activeObj.tab = tab;
-						activeObj.data = _data;
-						activeObj.canvas = canvas;
-						activeObj.id = _number;
-						activeObj.type = type;
+						self.active.call(that, _number);
+						window.localStorage.setItem(that.id+"_pad", JSON.stringify(that.container));
 						//TODO
 						//这里需要将前面一个标签对应的数据渲染出来
+						if(window.event) {
+							e.returnValue = false;
+							e.cancelBubble = true;
+						} else {
+							e.preventDefault();
+							e.stopPropagation();
+						}
 					});
 				}
 
 				ele.addEvent(li, "click", function() {
-					if(this===activeObj[tab]) return ;
-
-					ele.addClass(this, "active");
-					activeObj.tab = li;
-					activeObj.data = dataMap[_number];
-					activeObj.canvas = canvas;
-					activeObj.id = _number;
-					activeObj.type = type;
-					that.mainCanvas = canvas;
+					if(this===activeObj.tab) return ;
+					self.active.call(that, _number);
 				});
-
-				if(0===_number) {
-					activeObj.tab = li;
-					activeObj.data = dataMap[_number];
-					activeObj.canvas = canvas;
-					activeObj.id = _number;
-					activeObj.type = type;
-				}
 
 				number++;
 				tabWrap.appendChild(li);
+
 				that.container[_number] = {
 					data: dataMap[_number],
 					type: type
 				};
 
-				if(isShow) {
-					step(_data, 0, function(d, next) {
-						if(!d) return ;
-
-						data.render.call(that, d, function() {
-							next();
-						});
-					});
-				}
+				return _number;
 			};
 
 			self.push = function(id, data) {
 				var self = this;
+				!dataMap[id] && (dataMap[id] = []);
 				dataMap[id].push(data);
 
 				if(!saving && !!+self.params.autoSaveTime) {
@@ -600,6 +584,33 @@
 
 					saving = true;
 				}
+			};
+
+			self.active = function(_number) {
+				var self = this,
+					_data = dataMap[_number];
+
+				if(activeObj.canvas) {
+					ele.css(activeObj.canvas, "zIndex");
+					ele.removeClass(activeObj.tab, "active");
+				}
+
+				activeObj.tab = tabMap[_number];
+				activeObj.data = dataMap[_number];
+				activeObj.canvas = canvasMap[_number];
+				activeObj.id = _number;
+				activeObj.type = self.container[_number].type;
+				self.mainCanvas = activeObj.canvas;
+				ele.css(activeObj.canvas, "zIndex", 2);
+				ele.addClass(activeObj.tab, "active");
+
+				_data && step(_data, 0, function(d, next) {
+					if(!d) return ;
+
+					data.render.call(self, d, function() {
+						next();
+					});
+				});
 			};
 
 			self.getActive = function() {
@@ -705,7 +716,7 @@
 				}
 
 				if(val.status) {
-					that.tab.push.call(that, key, val);
+					that.tab.push.call(that, +key, val);
 				}
 
 				if(+key===activeTab.id) {
@@ -851,13 +862,26 @@
 		bufferCanvas3.height = canvasWrapHeight;
 		bufferCanvas4.width = canvasWrapWidth;
 		bufferCanvas4.height = canvasWrapHeight;
+
 		self.tab = new Tab(params.wrap);
 		self.textInput = textInput;
 		self.mouseIconCanvas = bufferCanvas2;
+		ele.css(mainCanvas, "background", self.params.background);
+		ele.css(bufferCanvas4, "background", self.params.background);
 
 		ele.addEvent(colorInput, "change", function() {
 			self.params.color = this.value;
 		});
+
+		self.pad.showFiles = function(files, newTab, isShow) {
+			if(newTab) {
+				var number = self.tab.build.call(self, bufferCanvas4, 1, null, true);
+				isShow && self.tab.active.call(self, number);
+			}
+			
+			self.toolbarMap.image.renderBuffer.call(self, files);
+			tempImg.src = files;
+		};
 
 		fr.onload = function(data) {
 			self.toolbarMap.image.renderBuffer.call(self, data.target.result);
@@ -1072,7 +1096,6 @@
 			bufferCanvas2.width = bufferCanvas2.width;
 		});
 
-		self.mainCanvas = mainCanvas;
 		self.bufferCanvas = bufferCanvas1;
 
 		if(!_data) {
@@ -1080,7 +1103,8 @@
 		} else {
 			for(var key in _data) {
 				var val = _data[key];
-				self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, val.type, val.data, 0===val.type);
+				var _n = self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, val.type, val.data, 0!=val.type);
+				0===val.type && self.tab.active.call(self, _n);
 			}
 		}
 	}
