@@ -41,14 +41,18 @@
 		},
 		bufferRender: function(data) {
 			if(!data) return ;
-			var self = this, _data = [data.x, data.y, self.params.eraserSize/2];
+			var self = this,
+				mode = modeMap[self.current.name],
+				_data = 0===mode?[data.x, data.y, self.params.eraserSize/2]:[data.x-self.params.eraserSize/2, data.y-self.params.eraserSize/2, self.params.eraserSize, self.params.eraserSize];
 			data = {type: "eraser", data: _data, status: 1, mode: modeMap[self.current.name], from: self.params.id};
 			self.current.buffer.push(data);
 			self.render(data);
 		},
 		render: function(data) {
 			if(!data) return ;
-			var self = this, _data = [data.x, data.y, self.params.eraserSize/2];
+			var self = this,
+				mode = modeMap[self.current.name],
+				_data = 0===mode?[data.x, data.y, self.params.eraserSize/2]:[data.x-self.params.eraserSize/2, data.y-self.params.eraserSize/2, self.params.eraserSize, self.params.eraserSize];
 			data = {type: "eraser", data: _data, status: 1, mode: modeMap[self.current.name], from: self.params.id};
 			self.current.buffer.push(data);
 			self.render(data);

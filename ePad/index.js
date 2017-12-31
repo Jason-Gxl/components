@@ -77,7 +77,7 @@
 		};
 
 	var tpl1 = '\
-		<div class="pad-wrap $LAYOUT$">\
+		<div class="pad-wrap $LAYOUT$ $DISABLED$">\
 			<div class="toolbar-wrap">\
 				<ul class="toolbar-list">$TOOLBARS$</ul>\
 			</div>\
@@ -811,6 +811,16 @@
 			that.tab.clear.call(that, number);
 		};
 
+		this.disable = function() {
+			ele.addClass(params.wrap.firstElementChild||params.wrap.firstChild, "disabled");
+			params.disable = true;
+		};
+
+		this.enable = function() {
+			ele.removeClass(params.wrap.firstElementChild||params.wrap.firstChild, "disabled");
+			params.disable = false;
+		};
+
 		ele.addEvent(params.wrap, "mouseenter", function() {
 			that.active = true;
 		});
@@ -895,7 +905,7 @@
 			toolbarStr += _tpl2;
 		});
 
-		var __str__ = tpl1.replace(/\$LAYOUT\$/g, layoutClassMap[params.layout]+(params.vertical?" vertical":"")).replace(/\$TOOLBARS\$/g, toolbarStr);
+		var __str__ = tpl1.replace(/\$LAYOUT\$/g, layoutClassMap[params.layout]+(params.vertical?" vertical":"")).replace(/\$TOOLBARS\$/g, toolbarStr).replace(/\$DISABLED\$/g, params.disable?"disabled":"");
 		var _data = params.data || JSON.parse(window.localStorage.getItem(self.id+"_pad"));
 		wrap.innerHTML = __str__;
 		this.toolbarMap = toolbarMap;
@@ -989,6 +999,8 @@
 		});
 
 		ele.addEvent(toolbarWrap, "click", function() {
+			if(params.disable) return ;
+
 			var args = [].slice.call(arguments, 0),
 				e = args[0] || window.event,
 				span = e.fromElement || e.srcElement,

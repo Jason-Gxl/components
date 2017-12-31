@@ -5,6 +5,7 @@
 	<meta charset="utf-8">
 	<link rel="stylesheet" type="text/css" href="./icon/iconfont.css">
 	<link rel="stylesheet" type="text/css" href="./index.css">
+	<!-- <link rel="stylesheet" type="text/css" href="./dist/css/index.min.css"> -->
 	<style type="text/css">
 		html, body {
 			padding: 0;
@@ -40,12 +41,14 @@
 <script type="text/javascript" src="./js/eraser.js"></script>
 <script type="text/javascript" src="./js/ferula.js"></script>
 <script type="text/javascript" src="./index.js"></script>
+<!-- <script type="text/javascript" src="./dist/js/index.min.js"></script> -->
 <script type="text/javascript">
 var pad1 = wPad.init({
 	id: 1,
 	wrap: document.getElementById("pad1"),
-	background: "black",
+	background: "#fff",
 	autoSaveTime: 5,
+	disable: false,
 	render: function(data) {
 		//pad2.render(data);
 	},

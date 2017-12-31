@@ -73,9 +73,22 @@
 	background: #cdcdcd;
 }
 
+.pad-wrap.disabled .toolbar-wrap .toolbar-list .toolbar-item .item-icon:hover {
+	background: none;
+}
+
+.pad-wrap.disabled .toolbar-wrap .toolbar-list .toolbar-item .item-icon {
+	color: #cecece;
+}
+
 .pad-wrap .toolbar-wrap .toolbar-list .toolbar-item .item-icon[active] {
 	background: #cdcdcd;
 	color: #fff;
+}
+
+.pad-wrap.disabled .toolbar-wrap .toolbar-list .toolbar-item .item-icon[active] {
+	background: none;
+	color: #cecece;
 }
 
 .pad-wrap .toolbar-wrap .toolbar-list .toolbar-item:first-child {
