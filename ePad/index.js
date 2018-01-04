@@ -821,6 +821,10 @@
 			params.disable = false;
 		};
 
+		this.createImage = function() {
+			return that.mainCanvas.toDataURL();
+		};
+
 		ele.addEvent(params.wrap, "mouseenter", function() {
 			that.active = true;
 		});
