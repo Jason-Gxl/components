@@ -622,13 +622,17 @@
 				ele.css(activeObj.canvas, "zIndex", 2);
 				ele.addClass(activeObj.tab, "active");
 
-				_data && step(_data, 0, function(d, next) {
-					if(!d) return ;
+				if(_data) {
+					activeObj.canvas.width = activeObj.canvas.width;
 
-					data.render.call(self, d, function() {
-						next();
+					step(_data, 0, function(d, next) {
+						if(!d) return ;
+
+						data.render.call(self, d, function() {
+							next();
+						});
 					});
-				});
+				}
 			};
 
 			self.getActive = function() {
