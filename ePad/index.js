@@ -88,6 +88,7 @@
 				<canvas class="buffer-can-3"></canvas>\
 				<canvas class="buffer-can-2"></canvas>\
 				<canvas class="buffer-can-1"></canvas>\
+				<div class="split-page-wrap"></div>\
 			</div>\
 			<div class="pad-tab-wrap">\
 				<ul class="pad-tab-list"></ul>\
@@ -100,6 +101,13 @@
 	var tpl2 = '<li class="toolbar-item" title="$TITLE$"><span class="item-icon iconfont $ICONCLASS$" item="$ITEM$" level="$LEVEL$"></span>$CHILDTOOLBARS$</li>';
 
 	var tpl3 = '<ul class="child-toolbar-list">$CHILDTOOLBARITEM$</ul>';
+
+	var tpl4 = '\
+		<div>\
+			<a href="javascript:void(0);" class="pre-page-btn">上一页</a>\
+			<a href="javascript:void(0);" class="next-page-btn">下一页</a>\
+			<span>第<input type="text" class="page-number-input"/>页<a href="javascript:void(0);" class="go-page-btn">GO</a></span>\
+		</div>';
 
 	vm.module = vm.module || {};
 
@@ -250,6 +258,32 @@
 			if(!content || "[object String]"!=toString.call(content)) return ;
 			return content.replace(/^\s*|\s*$/, "");
 		},
+		splitPage: function(_data) {
+			var obj = {},
+				keys = [],
+				list = [];
+
+			_data.forEach(function(d) {
+				if("[object String]"===toString.call(d)) {
+					list.push(d);
+				} else {
+					obj[d.pageNumber] = obj[d.pageNumber] || [];
+					obj[d.pageNumber].push(d);
+				}
+			});
+
+			for(var key in obj) {
+				keys.push(key);
+			}
+
+			keys.sort();
+
+			keys.forEach(function(key) {
+				list.push(obj[key]);
+			});
+
+			return list;
+		},
 		renderPen: function(params, callback) {
 			var self = this,
 				canvas = 0===params.status?self.bufferCanvas:self.mainCanvas,
@@ -375,11 +409,11 @@
 			img.src = data[0];
 			img.style.cssText = "position: absolute; z-index: -1; visibility: hidden;";
 			var cw = canvas.clientWidth,
-				ch = canvas.clientHeight,
-				dw = cw - data[1],
-				dh = ch - data[2];
+				ch = canvas.clientHeight;
 
 			img.onload = function() {
+				var dw = cw - (data[1] || img.offsetWidth), dh = ch - (data[2] || img.offsetHeight);
+
 				switch(true) {
 					case dw>=0 && dh>=0:
 					ctx.drawImage(img, dw/2, dh/2);
@@ -514,6 +548,7 @@
 				canvasMap = {},
 				activeObj = {},
 				saving = false,
+				pageMap = {},
 				tabWrap = wrap.getElementsByClassName("pad-tab-list")[0];
 
 			var step = (function() {
@@ -574,6 +609,7 @@
 
 				ele.addEvent(li, "click", function() {
 					if(this===activeObj.tab) return ;
+					activeObj.page && activeObj.page.hide();
 					self.active.call(that, _number);
 				});
 
@@ -582,7 +618,8 @@
 
 				that.container[_number] = {
 					data: dataMap[_number],
-					type: type
+					type: type,
+					splitPage: 0
 				};
 
 				return _number;
@@ -618,11 +655,13 @@
 				activeObj.canvas = canvasMap[_number];
 				activeObj.id = _number;
 				activeObj.type = self.container[_number].type;
+				activeObj.page = pageMap[_number];
 				self.mainCanvas = activeObj.canvas;
 				ele.css(activeObj.canvas, "zIndex", 2);
 				ele.addClass(activeObj.tab, "active");
+				activeObj.page && activeObj.page.show();
 
-				if(_data) {
+				if(_data && !activeObj.page) {
 					activeObj.canvas.width = activeObj.canvas.width;
 
 					step(_data, 0, function(d, next) {
@@ -652,6 +691,12 @@
 
 				window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
 			};
+
+			self.setPage = function(number, page) {
+				var that = this;
+				pageMap[number] = page;
+				that.container[number].splitPage = 1;
+			};
 		}
 
 		_tab.prototype = {
@@ -661,6 +706,132 @@
 		return _tab;
 	}());
 
+	function Page(params) {
+		if(!this instanceof Page) {
+			return new Page(params);
+		}
+
+		var self = this,
+			currentPage = 1,
+			that = params.that,
+			_data = data.splitPage(params.data),
+			total = _data.length,
+			tabId = params.tabId,
+			show = params.show || false,
+			div = document.createElement("DIV"),
+			pageWrap = that.params.wrap.getElementsByClassName("split-page-wrap")[0];
+
+		div.innerHTML = tpl4;
+		var pageEle = div.removeChild(div.firstElementChild || div.firstChild);
+
+		ele.addEvent(pageEle.getElementsByClassName("pre-page-btn")[0], "click", function() {
+			if(currentPage<=1) return ;
+			self.pre();
+		});
+
+		ele.addEvent(pageEle.getElementsByClassName("next-page-btn")[0], "click", function() {
+			if(currentPage>=total) return ;
+			self.next();
+		});
+
+		ele.addEvent(pageEle.getElementsByClassName("go-page-btn")[0], "click", function() {
+			var pageNumber = pageEle.getElementsByClassName("page-number-input")[0].value;
+			self.go(pageNumber);
+		});
+
+		this.pre = function() {
+			currentPage--;
+			this.go(currentPage);
+		};
+
+		var render = function(pageNumber, start) {
+			var __data = _data[pageNumber-1];
+
+			if("[object Array]"===toString.call(__data)) {
+				__data.some(function(d, index) {
+					if(index<start) return ;
+					var flag = false;
+
+					if("image"===d.type) {
+						flag = true;
+
+						data.render.call(that, d, function() {
+							render(pageNumber, ++index);
+						});
+					} else {
+						data.render.call(that, d);
+					}
+
+					return flag;
+				});
+			} else {
+				data.render.call(that, __data);
+			}
+		}
+
+		this.go = function(pageNumber) {
+			pageNumber = pageNumber<=1?1:pageNumber;
+			pageNumber = pageNumber>=total?total:pageNumber;
+			that.mainCanvas.width = that.mainCanvas.width;
+			render(pageNumber, 0);
+			currentPage = pageNumber;
+			pageEle.getElementsByClassName("page-number-input")[0].value = pageNumber;
+		};
+
+		this.next = function() {
+			currentPage++;
+			this.go(currentPage);
+		};
+
+		this.show = function() {
+			pageWrap.appendChild(pageEle);
+			that.page = self;
+			this.go(currentPage);
+		};
+
+		this.hide = function() {
+			pageWrap.removeChild(pageEle);
+			delete that.page;
+		};
+
+		this.getPageNumber = function() {
+			return currentPage;
+		};
+
+		_data.forEach(function(d, i) {
+			if("[object String]"===toString.call(d)) {
+				_data[i] = {
+					data: [d, 0, 0],
+					pageNumber: i+1,
+					width: 0,
+					height: 0,
+					status: 1,
+					type: "image",
+					from: 1
+				};
+
+				that.tab.push.call(that, tabId, _data[i]);
+			}
+		});
+
+		this.push = function(data) {
+			if("image"===data.type) return ;
+			var activeTab = that.tab.getActive();
+			data.pageNumber = currentPage;
+			_data[currentPage-1].push(data);
+			that.tab.push.call(that, activeTab.id, data);
+		};
+
+		if(show) {
+			pageWrap.appendChild(pageEle);
+			self.go(1);
+		}
+	}
+
+	Page.prototype = {
+		constructor: Page
+	};
+
 	function WPad(params) {
 		if(!this instanceof WPad) {
 			return new WPad(params);
@@ -669,16 +840,22 @@
 		var that = {
 			pad: this,
 			params: params,
+			waitList: [],
 			container: {},
 			id: params.id || padCount++,
-			render: function(_data) {
+			render: function(_data, storage) {
 				data.render.call(that, _data);
 				_data.width = that.mainCanvas.width;
 				_data.height = that.mainCanvas.height;
 
 				if(_data.status) {
 					var activeTab = that.tab.getActive();
-					that.tab.push.call(that, activeTab.id, _data);
+
+					if(activeTab.page) {
+						activeTab.page.push.call(that, _data);
+					} else {
+						that.tab.push.call(that, activeTab.id, _data);
+					}
 				}
 
 				if(params.render) {
@@ -686,7 +863,8 @@
 
 					obj[activeTab.id] = {
 						data: outData,
-						type: activeTab.type
+						type: activeTab.type,
+						splitPage: activeTab.page?1:0
 					};
 
 					params.render(obj);
@@ -954,13 +1132,38 @@
 		});
 
 		self.pad.showFiles = function(files, newTab, isShow) {
+			var splitPage = files.length>1,
+				activeTab = self.tab.getActive();
+
+			var _showFiles = function() {
+				self.pad.clear();
+
+				if(splitPage) {
+					var pageObj = new Page({
+						data: files, 
+						show: isShow, 
+						that: self,
+						tabId: newTab?number:activeTab.id
+					});
+
+					self.tab.setPage.call(self, void(0)!=number?number:activeTab.id, pageObj);
+					activeTab.page = pageObj;
+				} else {
+					self.toolbarMap.image.renderBuffer.call(self, files);
+					tempImg.src = files;
+				}
+			};
+
 			if(newTab) {
 				var number = self.tab.build.call(self, bufferCanvas4, 1, null, true);
-				isShow && self.tab.active.call(self, number);
+
+				if(isShow) {
+					self.tab.active.call(self, number);
+					_showFiles();
+				}
+			} else {
+				_showFiles();
 			}
-			
-			self.toolbarMap.image.renderBuffer.call(self, files);
-			tempImg.src = files;
 		};
 
 		fr.onload = function(data) {
@@ -1187,6 +1390,18 @@
 			for(var key in _data) {
 				var val = _data[key];
 				var _n = self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, val.type, val.data, 0!=val.type);
+
+				if(val.splitPage) {
+					var pageObj = new Page({
+						data: val.data, 
+						show: 0===val.type, 
+						that: self,
+						tabId: _n
+					});
+
+					self.tab.setPage.call(self, _n, pageObj);
+				}
+
 				0===val.type && self.tab.active.call(self, _n);
 			}
 		}

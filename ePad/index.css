@@ -8,6 +8,18 @@
 	overflow: hidden;
 }
 
+.pad-wrap .split-page-wrap {
+	position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+}
+
+.pad-wrap .split-page-wrap .page-number-input {
+    width: 30px;
+    text-align: center;
+}
+
 .pad-wrap ul, .pad-wrap li {
 	list-style: none;
 	padding: 0;
