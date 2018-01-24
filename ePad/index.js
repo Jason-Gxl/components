@@ -95,7 +95,6 @@
 			</div>\
 			<input type="file" accept="image/png, image/jpeg" class="file-input tool-input"/>\
 			<input type="color" class="color-input tool-input"/>\
-			<img src="" class="tool-img"/>\
 		</div>';
 
 	var tpl2 = '<li class="toolbar-item" title="$TITLE$"><span class="item-icon iconfont $ICONCLASS$" item="$ITEM$" level="$LEVEL$"></span>$CHILDTOOLBARS$</li>';
@@ -402,22 +401,19 @@
 			var self = this,
 				canvas = self.mainCanvas,
 				data = params.data,
-				wrap = self.params.wrap,
-				img = document.createElement("IMG"),
+				img = new Image(),
 				ctx = canvas.getContext("2d");
 
 			img.src = data[0];
-			img.style.cssText = "position: absolute; z-index: -1; visibility: hidden;";
-			var cw = canvas.clientWidth,
-				ch = canvas.clientHeight;
+			var cw = canvas.clientWidth, ch = canvas.clientHeight;
 
 			img.onload = function() {
-				var dw = cw - (data[1] || img.offsetWidth), dh = ch - (data[2] || img.offsetHeight);
+				var dw = cw - img.width, dh = ch - img.height;
 
 				if(dw>=0 && dh>=0) {
 					ctx.drawImage(img, dw/2, dh/2);
 				} else {
-					var cwhp = cw/ch, iwhp = (data[1] || img.offsetWidth)/(data[2] || img.offsetHeight);
+					var cwhp = cw/ch, iwhp = img.width/img.height;
 
 					if(cwhp>iwhp) {
 						ctx.drawImage(img, (cw-ch*iwhp)/2, 0, ch*iwhp, ch);
@@ -426,11 +422,8 @@
 					}
 				}
 
-				wrap.removeChild(this);
 				callback && callback();
 			};
-
-			wrap.insertBefore(img, wrap.firstElementChild||wrap.firstChild);
 		},
 		delete: function(params, callback) {
 			var self = this,
@@ -1042,6 +1035,10 @@
 		ele.addEvent(params.wrap, "mouseleave", function() {
 			that.active = false;
 		});
+
+		ele.addEvent(window, "resize", function() {
+			that.tab.active.call(that, that.tab.getActive().id);
+		});
 	}
 
 	function buildPad() {
@@ -1062,7 +1059,6 @@
 		var colorInput = null,
 			fileInput = null,
 			textInput = null,
-			tempImg = null,
 			mainCanvas = null,
 			bufferCanvas1 = null,
 			bufferCanvas2 = null,
@@ -1129,7 +1125,6 @@
 		colorInput = wrap.getElementsByClassName("color-input")[0];
 		fileInput = wrap.getElementsByClassName("file-input")[0];
 		textInput = wrap.getElementsByClassName("text-input")[0];
-		tempImg = wrap.getElementsByClassName("tool-img")[0];
 		mainCanvas = wrap.getElementsByClassName("main-can")[0];
 		bufferCanvas1 = wrap.getElementsByClassName("buffer-can-1")[0];
 		bufferCanvas2 = wrap.getElementsByClassName("buffer-can-2")[0];
@@ -1178,7 +1173,7 @@
 					activeTab.page = pageObj;
 				} else {
 					self.toolbarMap.image.renderBuffer.call(self, files);
-					tempImg.src = files;
+					self.toolbarMap.image.render.call(self, [0, 0]);
 				}
 			};
 
@@ -1196,13 +1191,8 @@
 
 		fr.onload = function(data) {
 			self.toolbarMap.image.renderBuffer.call(self, data.target.result);
-			tempImg.src = data.target.result;
-		};
-
-		tempImg.onload = function() {
-			self.toolbarMap.image.render.call(self, [this.offsetWidth, this.offsetHeight]);
+			self.toolbarMap.image.render.call(self, [0, 0]);
 			fileInput.value = "";
-			this.src = "";
 		};
 
 		ele.addEvent(fileInput, "change", function() {
