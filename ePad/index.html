@@ -22,8 +22,8 @@
 		}
 
 		#pad2 {
-			width: 400px;
-			height: 250px;
+			width: 800px;
+			height: 500px;
 			display: inline-block;
 		}
 	</style>
@@ -50,13 +50,14 @@ var pad1 = wPad.init({
 	autoSaveTime: 5,
 	disable: false,
 	render: function(data) {
-		//pad2.render(data);
+		pad2.render(data);
+		//console.log(data);
 	},
 	mousemove: function(data) {
-		//pad2.mouseCtrl(data);
+		pad2.mouseCtrl(data);
 	},
 	clear: function(id) {
-		console.log("clear------"+id);
+		//console.log("clear------"+id);
 	}
 });
 
@@ -65,15 +66,16 @@ var pad2 = wPad.init({
 	wrap: document.getElementById("pad2"),
 	background: "#fff",
 	autoSaveTime: 10,
+	disable: true,
 	render: function(data) {
-		console.log(data);
+		//console.log(data);
 		//pad1.render(data);
 	},
 	mousemove: function(data) {
-		console.log(data);
+		//console.log(data);
 	},
 	clear: function(id) {
-		console.log("clear------"+id);
+		//console.log("clear------"+id);
 	}
 });
 </script>

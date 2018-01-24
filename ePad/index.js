@@ -591,6 +591,12 @@
 						delete dataMap[_number];
 						delete canvasMap[_number];
 						delete that.container[_number];
+
+						if(pageMap[_number]) {
+							pageMap[_number].hide();
+							delete pageMap[_number];
+						}
+
 						tabWrap.removeChild(li);
 						_number = _number - 1;
 						self.active.call(that, _number);
@@ -722,20 +728,25 @@
 			pageWrap = that.params.wrap.getElementsByClassName("split-page-wrap")[0];
 
 		div.innerHTML = tpl4;
-		var pageEle = div.removeChild(div.firstElementChild || div.firstChild);
+		var pageEle = div.removeChild(div.firstElementChild || div.firstChild),
+			prePageBtn = pageEle.getElementsByClassName("pre-page-btn")[0],
+			nextPageBtn = pageEle.getElementsByClassName("next-page-btn")[0],
+			goPageBtn = pageEle.getElementsByClassName("go-page-btn")[0],
+			pageNumberInput = pageEle.getElementsByClassName("page-number-input")[0];
 
-		ele.addEvent(pageEle.getElementsByClassName("pre-page-btn")[0], "click", function() {
-			if(currentPage<=1) return ;
+		ele.addEvent(prePageBtn, "click", function() {
+			if(that.params.disable || currentPage<=1) return ;
 			self.pre();
 		});
 
-		ele.addEvent(pageEle.getElementsByClassName("next-page-btn")[0], "click", function() {
-			if(currentPage>=total) return ;
+		ele.addEvent(nextPageBtn, "click", function() {
+			if(that.params.disable || currentPage>=total) return ;
 			self.next();
 		});
 
-		ele.addEvent(pageEle.getElementsByClassName("go-page-btn")[0], "click", function() {
-			var pageNumber = pageEle.getElementsByClassName("page-number-input")[0].value;
+		ele.addEvent(goPageBtn, "click", function() {
+			if(that.params.disable) return ;
+			var pageNumber = pageNumberInput.value;
 			self.go(pageNumber);
 		});
 
@@ -775,7 +786,21 @@
 			that.mainCanvas.width = that.mainCanvas.width;
 			render(pageNumber, 0);
 			currentPage = pageNumber;
-			pageEle.getElementsByClassName("page-number-input")[0].value = pageNumber;
+			pageNumberInput.value = pageNumber;
+
+			switch(true) {
+				case currentPage<=1 && currentPage<total:
+					ele.addClass(prePageBtn, "no");
+					ele.removeClass(nextPageBtn, "no");
+					break;
+				case currentPage>1 && currentPage>=total:
+					ele.removeClass(prePageBtn, "no");
+					ele.addClass(nextPageBtn, "no");
+					break;
+				default:
+					ele.removeClass(prePageBtn, "no");
+					ele.removeClass(nextPageBtn, "no");
+			}
 		};
 
 		this.next = function() {
@@ -798,9 +823,17 @@
 			return currentPage;
 		};
 
+		this.empower = function() {
+			pageNumberInput.removeAttribute("readonly");
+		};
+
+		this.disable = function() {
+			pageNumberInput.setAttribute("readonly", "readonly");
+		};
+
 		_data.forEach(function(d, i) {
 			if("[object String]"===toString.call(d)) {
-				_data[i] = {
+				_data[i] = [{
 					data: [d, 0, 0],
 					pageNumber: i+1,
 					width: 0,
@@ -808,9 +841,9 @@
 					status: 1,
 					type: "image",
 					from: 1
-				};
+				}];
 
-				that.tab.push.call(that, tabId, _data[i]);
+				that.tab.push.call(that, tabId, _data[i][0]);
 			}
 		});
 
@@ -821,6 +854,8 @@
 			_data[currentPage-1].push(data);
 			that.tab.push.call(that, activeTab.id, data);
 		};
+
+		that.params.disable && this.disable();
 
 		if(show) {
 			pageWrap.appendChild(pageEle);
@@ -1174,6 +1209,7 @@
 		tempImg.onload = function() {
 			self.toolbarMap.image.render.call(self, [this.offsetWidth, this.offsetHeight]);
 			fileInput.value = "";
+			this.src = "";
 		};
 
 		ele.addEvent(fileInput, "change", function() {

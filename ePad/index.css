@@ -10,14 +10,42 @@
 
 .pad-wrap .split-page-wrap {
 	position: absolute;
-    right: 0;
+    right: 5px;
     bottom: 0;
     z-index: 100;
+}
+
+.pad-wrap .no {
+	color: #cdcdcd !important;
+	cursor: default;
+}
+
+.pad-wrap .no:hover {
+	text-decoration: none !important;
+}
+
+.pad-wrap .split-page-wrap a {
+	text-decoration: none;
+    color: #444;
+}
+
+.pad-wrap .split-page-wrap span {
+	margin-left: 15px;
+	display: inline-block;
+}
+
+.pad-wrap .split-page-wrap .go-page-btn {
+	margin-left: 10px;
+}
+
+.pad-wrap .split-page-wrap a:hover {
+	text-decoration: underline;
 }
 
 .pad-wrap .split-page-wrap .page-number-input {
     width: 30px;
     text-align: center;
+    outline: none;
 }
 
 .pad-wrap ul, .pad-wrap li {
@@ -101,6 +129,19 @@
 .pad-wrap.disabled .toolbar-wrap .toolbar-list .toolbar-item .item-icon[active] {
 	background: none;
 	color: #cecece;
+}
+
+.pad-wrap.disabled .split-page-wrap {
+	color: #cdcdcd;
+}
+
+.pad-wrap.disabled .split-page-wrap a {
+	color: #cdcdcd;
+}
+
+.pad-wrap.disabled .split-page-wrap a:hover {
+	text-decoration: none;
+	cursor: default;
 }
 
 .pad-wrap .toolbar-wrap .toolbar-list .toolbar-item:first-child {
