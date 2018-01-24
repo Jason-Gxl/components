@@ -1167,7 +1167,7 @@
 		});
 
 		self.pad.showFiles = function(files, newTab, isShow) {
-			var splitPage = files.length>1,
+			var splitPage = "[object Array]"===toString.call(files) && files.length>1?true:false,
 				activeTab = self.tab.getActive();
 
 			var _showFiles = function() {
