@@ -414,22 +414,15 @@
 			img.onload = function() {
 				var dw = cw - (data[1] || img.offsetWidth), dh = ch - (data[2] || img.offsetHeight);
 
-				switch(true) {
-					case dw>=0 && dh>=0:
+				if(dw>=0 && dh>=0) {
 					ctx.drawImage(img, dw/2, dh/2);
-					break;
-					case dw<0 && dh<0:
-					if(Math.abs(dw)>Math.abs(dh)) {
-						ctx.drawImage(img, 0, dh/2, cw, cw*(data[2]/data[1]));
+				} else {
+					var cwhp = cw/ch, iwhp = (data[1] || img.offsetWidth)/(data[2] || img.offsetHeight);
+
+					if(cwhp>iwhp) {
+						ctx.drawImage(img, (cw-ch*iwhp)/2, 0, ch*iwhp, ch);
 					} else {
-						ctx.drawImage(img, dw/2, 0, ch*(data[1]/data[2]), ch);
-					}
-					break;
-					default:
-					if(dw<0) {
-						ctx.drawImage(img, 0, dh/2, cw, cw*(data[2]/data[1]));
-					} else {
-						ctx.drawImage(img, dw/2, 0, ch*(data[1]/data[2]), ch);
+						ctx.drawImage(img, 0, (ch-cw/iwhp)/2, cw, cw/iwhp);
 					}
 				}
 
