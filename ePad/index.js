@@ -528,11 +528,12 @@
 
 		function _tab(wrap) {
 			var self = this,
-				number = 0,
+				id = 0,
 				tabMap = {},
 				dataMap = {},
 				canvasMap = {},
 				activeObj = {},
+				idList = [],
 				saving = false,
 				pageMap = {},
 				tabWrap = wrap.getElementsByClassName("pad-tab-list")[0];
@@ -558,36 +559,39 @@
 			self.build = function(canvas, type, _data, del) {
 				if(!canvas) return ;
 				var that = this,
-					_number = number,
+					_id = id,
 					_tabTpl = tabTpl.replace(/\$LABEL\$/g, tabNameMap[type]).replace(/\$DELETEBTN\$/g, del?delTpl:"");
 
 				UL.innerHTML = _tabTpl;
+				idList.push(_id);
 				var li = UL.firstElementChild || UL.firstChild;
 
-				tabMap[_number] = li;
-				dataMap[_number] = _data || [];
-				canvasMap[_number] = canvas;
+				tabMap[_id] = li;
+				dataMap[_id] = _data || [];
+				canvasMap[_id] = canvas;
 
 				if(del) {
 					ele.addEvent(li.getElementsByTagName("i")[0], "click", function() {
 						var args = [].slice.call(arguments, 0),
-						 	e = args[0] || window;
+						 	e = args[0] || window.event,
+						 	index = idList.indexOf(_id);
 
-						delete tabMap[_number];
-						delete dataMap[_number];
-						delete canvasMap[_number];
-						delete that.container[_number];
+						delete tabMap[_id];
+						delete dataMap[_id];
+						delete canvasMap[_id];
+						delete that.container[_id];
 
-						if(pageMap[_number]) {
-							pageMap[_number].hide();
-							delete pageMap[_number];
+						if(pageMap[_id]) {
+							pageMap[_id].hide();
+							delete pageMap[_id];
 						}
 
 						tabWrap.removeChild(li);
-						_number = _number - 1;
-						self.active.call(that, _number);
+						idList.splice(index, 1);
+						_id = idList[index-1>=0?index-1:0];
+						self.active.call(that, _id);
 						window.localStorage.setItem(that.id+"_pad", JSON.stringify(that.container));
-						//TODO
+						
 						//这里需要将前面一个标签对应的数据渲染出来
 						if(window.event) {
 							e.returnValue = false;
@@ -602,19 +606,19 @@
 				ele.addEvent(li, "click", function() {
 					if(this===activeObj.tab) return ;
 					activeObj.page && activeObj.page.hide();
-					self.active.call(that, _number);
+					self.active.call(that, _id);
 				});
 
-				number++;
+				id++;
 				tabWrap.appendChild(li);
 
-				that.container[_number] = {
-					data: dataMap[_number],
+				that.container[_id] = {
+					data: dataMap[_id],
 					type: type,
 					splitPage: 0
 				};
 
-				return _number;
+				return _id;
 			};
 
 			self.push = function(id, data) {
@@ -633,21 +637,21 @@
 				}
 			};
 
-			self.active = function(_number) {
+			self.active = function(_id) {
 				var self = this,
-					_data = dataMap[_number];
+					_data = dataMap[_id];
 
 				if(activeObj.canvas) {
 					ele.css(activeObj.canvas, "zIndex");
 					ele.removeClass(activeObj.tab, "active");
 				}
 
-				activeObj.tab = tabMap[_number];
-				activeObj.data = dataMap[_number];
-				activeObj.canvas = canvasMap[_number];
-				activeObj.id = _number;
-				activeObj.type = self.container[_number].type;
-				activeObj.page = pageMap[_number];
+				activeObj.tab = tabMap[_id];
+				activeObj.data = dataMap[_id];
+				activeObj.canvas = canvasMap[_id];
+				activeObj.id = _id;
+				activeObj.type = self.container[_id].type;
+				activeObj.page = pageMap[_id];
 				self.mainCanvas = activeObj.canvas;
 				ele.css(activeObj.canvas, "zIndex", 2);
 				ele.addClass(activeObj.tab, "active");
@@ -684,10 +688,10 @@
 				window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
 			};
 
-			self.setPage = function(number, page) {
+			self.setPage = function(id, page) {
 				var that = this;
-				pageMap[number] = page;
-				that.container[number].splitPage = 1;
+				pageMap[id] = page;
+				that.container[id].splitPage = 1;
 			};
 		}
 
@@ -1010,8 +1014,8 @@
 			renderMouse(_data);
 		};
 
-		this.clear = function(number) {
-			that.tab.clear.call(that, number);
+		this.clear = function(id) {
+			that.tab.clear.call(that, id);
 		};
 
 		this.disable = function() {
@@ -1166,10 +1170,10 @@
 						data: files, 
 						show: isShow, 
 						that: self,
-						tabId: newTab?number:activeTab.id
+						tabId: newTab?id:activeTab.id
 					});
 
-					self.tab.setPage.call(self, void(0)!=number?number:activeTab.id, pageObj);
+					self.tab.setPage.call(self, void(0)!=id?id:activeTab.id, pageObj);
 					activeTab.page = pageObj;
 				} else {
 					self.toolbarMap.image.renderBuffer.call(self, files);
@@ -1178,10 +1182,10 @@
 			};
 
 			if(newTab) {
-				var number = self.tab.build.call(self, bufferCanvas4, 1, null, true);
+				var id = self.tab.build.call(self, bufferCanvas4, 1, null, true);
 
 				if(isShow) {
-					self.tab.active.call(self, number);
+					self.tab.active.call(self, id);
 					_showFiles();
 				}
 			} else {
