@@ -151,6 +151,7 @@
 .pad-wrap .can-wrap {
 	position: absolute;
 	height: calc(100% - 78px);
+	height+: calc(~'100% - 78px');
 	top: 38px;
 	width: 100%;
 }

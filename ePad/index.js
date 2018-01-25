@@ -289,6 +289,7 @@
 				data = params.data,
 				ctx = canvas.getContext("2d");
 
+			
 			ctx.strokeStyle = params.color;
 
 			if(params.origin) {
@@ -1039,10 +1040,6 @@
 		ele.addEvent(params.wrap, "mouseleave", function() {
 			that.active = false;
 		});
-
-		ele.addEvent(window, "resize", function() {
-			that.tab.active.call(that, that.tab.getActive().id);
-		});
 	}
 
 	function buildPad() {
@@ -1134,20 +1131,35 @@
 		bufferCanvas2 = wrap.getElementsByClassName("buffer-can-2")[0];
 		bufferCanvas3 = wrap.getElementsByClassName("buffer-can-3")[0];
 		bufferCanvas4 = wrap.getElementsByClassName("buffer-can-4")[0];
+		var canvasWrapWidth = 0, canvasWrapHeight = 0;
 
-		var canvasWrapWidth = canvasWrap.clientWidth,
-			canvasWrapHeight = canvasWrap.clientHeight;
-		mainCanvas.width = canvasWrapWidth;
-		mainCanvas.height = canvasWrapHeight;
-		bufferCanvas1.width = canvasWrapWidth;
-		bufferCanvas1.height = canvasWrapHeight;
-		bufferCanvas2.width = canvasWrapWidth;
-		bufferCanvas2.height = canvasWrapHeight;
-		bufferCanvas3.width = canvasWrapWidth;
-		bufferCanvas3.height = canvasWrapHeight;
-		bufferCanvas4.width = canvasWrapWidth;
-		bufferCanvas4.height = canvasWrapHeight;
+		var resizeCanvas = function() {
+			var ww = canvasWrap.clientWidth, wh = canvasWrap.clientHeight;
+			
+			if(ww!=canvasWrapWidth || wh!=canvasWrapHeight) {
+				canvasWrapWidth = ww;
+				canvasWrapHeight = wh;
+				mainCanvas.width = canvasWrapWidth;
+				mainCanvas.height = canvasWrapHeight;
+				bufferCanvas1.width = canvasWrapWidth;
+				bufferCanvas1.height = canvasWrapHeight;
+				bufferCanvas2.width = canvasWrapWidth;
+				bufferCanvas2.height = canvasWrapHeight;
+				bufferCanvas3.width = canvasWrapWidth;
+				bufferCanvas3.height = canvasWrapHeight;
+				bufferCanvas4.width = canvasWrapWidth;
+				bufferCanvas4.height = canvasWrapHeight;
+				params.width = canvasWrapWidth;
+				params.height = canvasWrapHeight;
+			}
+		};
+		
+		ele.addEvent(window, "resize", function() {
+			resizeCanvas();
+			self.tab.active.call(self, self.tab.getActive().id);
+		});
 
+		resizeCanvas();
 		self.tab = new Tab(params.wrap);
 		self.textInput = textInput;
 		self.mouseIconCanvas = bufferCanvas2;
@@ -1237,7 +1249,7 @@
 
 			var args = [].slice.call(arguments, 0),
 				e = args[0] || window.event,
-				span = e.fromElement || e.srcElement,
+				span = e.srcElement || e.target,
 				level = +span.getAttribute("level"),
 				item = span.getAttribute("item");
 

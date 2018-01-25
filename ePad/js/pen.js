@@ -12,7 +12,7 @@
 		active: function() {},
 		bufferRender: function(data, origin) {
 			var self = this;
-			data = {type: "pen", data: data, status: 0, origin: !!origin, color: self.params.color, from: self.params.id};
+			data = {type: "pen", data: data, status: 0, origin: !!origin, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height};
 			self.current.interimBuffer.push(data);
 			self.render(data);
 		},

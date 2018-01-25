@@ -4,8 +4,8 @@
 	<title></title>
 	<meta charset="utf-8">
 	<link rel="stylesheet" type="text/css" href="./icon/iconfont.css">
-	<link rel="stylesheet" type="text/css" href="./index.css">
-	<!-- <link rel="stylesheet" type="text/css" href="./dist/css/index.min.css"> -->
+	<!-- <link rel="stylesheet" type="text/css" href="./index.css"> -->
+	<link rel="stylesheet" type="text/css" href="./dist/css/index.min.css">
 	<style type="text/css">
 		html, body {
 			padding: 0;
@@ -16,23 +16,23 @@
 		}
 
 		#pad1 {
-			width: 800px;
-			height: 500px;
+			width: 100%;
+			height: 100%;
 			display: inline-block;
 		}
 
-		#pad2 {
+		/*#pad2 {
 			width: 800px;
 			height: 500px;
 			display: inline-block;
-		}
+		}*/
 	</style>
 </head>
 <body>
 	<div id="pad1"></div>
 	<div id="pad2"></div>
 </body>
-<script type="text/javascript" src="./js/pen.js"></script>
+<!-- <script type="text/javascript" src="./js/pen.js"></script>
 <script type="text/javascript" src="./js/rectangle.js"></script>
 <script type="text/javascript" src="./js/line.js"></script>
 <script type="text/javascript" src="./js/round.js"></script>
@@ -40,8 +40,8 @@
 <script type="text/javascript" src="./js/image.js"></script>
 <script type="text/javascript" src="./js/eraser.js"></script>
 <script type="text/javascript" src="./js/ferula.js"></script>
-<script type="text/javascript" src="./index.js"></script>
-<!-- <script type="text/javascript" src="./dist/js/index.min.js"></script> -->
+<script type="text/javascript" src="./index.js"></script> -->
+<script type="text/javascript" src="./dist/js/index.min.js"></script>
 <script type="text/javascript">
 var pad1 = wPad.init({
 	id: 1,
@@ -50,18 +50,18 @@ var pad1 = wPad.init({
 	autoSaveTime: 5,
 	disable: false,
 	render: function(data) {
-		pad2.render(data);
+		//pad2.render(data);
 		//console.log(data);
 	},
 	mousemove: function(data) {
-		pad2.mouseCtrl(data);
+		//pad2.mouseCtrl(data);
 	},
 	clear: function(id) {
 		//console.log("clear------"+id);
 	}
 });
 
-var pad2 = wPad.init({
+/*var pad2 = wPad.init({
 	id: 2,
 	wrap: document.getElementById("pad2"),
 	background: "#fff",
@@ -77,6 +77,6 @@ var pad2 = wPad.init({
 	clear: function(id) {
 		//console.log("clear------"+id);
 	}
-});
+});*/
 </script>
 </html>
