@@ -9,6 +9,7 @@
 
 	function Eraser(params) {
 		this.name = params.name || "Eraser";
+		this.interimBuffer = [];
 		this.buffer = [];
 	}
 
@@ -39,23 +40,24 @@
 			self.params.eraserSize = Math.max.apply(Math, [5, eraserSize]);
 			self.mouseRender.call(self, pos);
 		},
-		bufferRender: function(data) {
+		bufferRender: function(data, origin) {
 			if(!data) return ;
-			var self = this,
-				mode = modeMap[self.current.name],
-				_data = 0===mode?[data.x, data.y, self.params.eraserSize/2]:[data.x-self.params.eraserSize/2, data.y-self.params.eraserSize/2, self.params.eraserSize, self.params.eraserSize];
-			data = {type: "eraser", data: _data, status: 1, mode: modeMap[self.current.name], from: self.params.id};
-			self.current.buffer.push(data);
+			var self = this;
+			data.size = self.params.eraserSize;
+			data = {type: "eraser", data: data, status: 0, origin: !!origin, mode: modeMap[self.current.name], from: self.params.id, width: self.params.width, height: self.params.height};
+			self.current.interimBuffer.push(data);
 			self.render(data);
 		},
-		render: function(data) {
+		render: function() {
+			var self = this, data = self.current.interimBuffer.shift();
 			if(!data) return ;
-			var self = this,
-				mode = modeMap[self.current.name],
-				_data = 0===mode?[data.x, data.y, self.params.eraserSize/2]:[data.x-self.params.eraserSize/2, data.y-self.params.eraserSize/2, self.params.eraserSize, self.params.eraserSize];
-			data = {type: "eraser", data: _data, status: 1, mode: modeMap[self.current.name], from: self.params.id};
-			self.current.buffer.push(data);
-			self.render(data);
+
+			do {
+				data.status = 1;
+				self.current.buffer.push(data);
+				self.render(data);
+				data = self.current.interimBuffer.shift();
+			} while(data);
 		}
 	};
 

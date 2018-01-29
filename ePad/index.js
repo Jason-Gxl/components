@@ -288,9 +288,9 @@
 				canvas = 0===params.status?self.bufferCanvas:self.mainCanvas,
 				data = params.data,
 				ctx = canvas.getContext("2d");
-
 			
 			ctx.strokeStyle = params.color;
+			ctx.lineWidth = 1;
 
 			if(params.origin) {
 				ctx.beginPath();
@@ -301,6 +301,7 @@
 			}
 
 			if(0!=params.status && params.origin) self.bufferCanvas.width = self.bufferCanvas.width;
+			ctx.save();
 			callback && callback();
 		},
 		renderRect: function(params, callback) {
@@ -318,6 +319,7 @@
 
 			if(0===params.mode) {
 				ctx.strokeStyle = params.color;
+				ctx.lineWidth = 1;
 				ctx.rect(data[0], data[1], data[2], data[3]);
 				ctx.stroke();
 			} else {
@@ -325,6 +327,7 @@
 				ctx.fillRect(data[0], data[1], data[2], data[3]);
 			}
 
+			ctx.save();
 			callback && callback();
 		},
 		renderLine: function(params, callback) {
@@ -341,10 +344,12 @@
 			}
 
 			ctx.strokeStyle = params.color;
+			ctx.lineWidth = 1;
 			ctx.beginPath();
 			ctx.moveTo(data[0], data[1]);
 			ctx.lineTo(data[2], data[3]);
 			ctx.stroke();
+			ctx.save();
 			callback && callback();
 		},
 		renderRound: function(params, callback) {
@@ -365,6 +370,7 @@
 			switch(mode) {
 				case 0:
 				ctx.strokeStyle = params.color;
+				ctx.lineWidth = 1;
 				ctx.arc(data[0], data[1], data[2], 0, 2*Math.PI);
 				ctx.stroke();
 				break;
@@ -379,6 +385,7 @@
 				break;
 			}
 
+			ctx.save();
 			callback && callback();
 		},
 		renderText: function(params, callback) {
@@ -396,6 +403,7 @@
 			ctx.beginPath();
 			ctx.fillStyle = params.color;
 			ctx.fillText(data[2], data[0], data[1]);
+			ctx.save();
 			callback && callback();
 		},
 		renderImage: function(params, callback) {
@@ -423,32 +431,39 @@
 					}
 				}
 
+				ctx.save();
 				callback && callback();
 			};
 		},
 		delete: function(params, callback) {
 			var self = this,
-				mode = params.mode,
 				canvas = 0===params.status?self.bufferCanvas:self.mainCanvas,
 				data = params.data,
 				ctx = canvas.getContext("2d");
-
-			if(0===params.status) {
-				canvas.width = canvas.width;
-			} else {
-				self.bufferCanvas.width = self.bufferCanvas.width;
-			}
-
-			ctx.beginPath();
+			
+			ctx.strokeStyle = self.params.background;
+			ctx.lineWidth = data.size;
 			ctx.fillStyle = self.params.background;
 
-			if(0===mode) {
-				ctx.arc(data[0], data[1], data[2], 0, 2*Math.PI);
-				ctx.fill();
+			if(0===params.mode) {
+				ctx.lineJoin = "round";
+				ctx.lineCap = "round";
 			} else {
-				ctx.fillRect(data[0], data[1], data[2], data[3]);
+				ctx.lineCap = "square";
+				ctx.lineJoin = "bevel";
 			}
 
+			if(params.origin) {
+				ctx.beginPath();
+				ctx.moveTo(data.x, data.y);
+				ctx.lineTo(data.x, data.y);
+			} else {
+				ctx.lineTo(data.x, data.y);
+				ctx.stroke();
+			}
+
+			if(0!=params.status && params.origin) self.bufferCanvas.width = self.bufferCanvas.width;
+			ctx.save();
 			callback && callback();
 		},
 		render: function(_data, callback) {
@@ -544,14 +559,14 @@
 
 				var _fn  = function() {
 					i++;
-					callback(arr[i], _fn);
+					return callback(arr[i], _fn);
 				};
 
 				var _step = function(_data, start, _callback) {
 					arr = _data;
 					i = start;
 					callback = _callback;
-					callback(_data[start], _fn);
+					return callback(_data[start], _fn);
 				};
 
 				return _step;
@@ -660,12 +675,14 @@
 
 				if(_data && !activeObj.page) {
 					activeObj.canvas.width = activeObj.canvas.width;
+					var stepObj = null;
 
 					step(_data, 0, function(d, next) {
 						if(!d) return ;
+						stepObj = next;
 
-						data.render.call(self, d, function() {
-							next();
+						return data.render.call(self, d, function() {
+							return stepObj();
 						});
 					});
 				}
@@ -1162,7 +1179,7 @@
 		resizeCanvas();
 		self.tab = new Tab(params.wrap);
 		self.textInput = textInput;
-		self.mouseIconCanvas = bufferCanvas2;
+		self.mouseIconCanvas = bufferCanvas1;
 		ele.css(mainCanvas, "background", self.params.background);
 		ele.css(bufferCanvas4, "background", self.params.background);
 
@@ -1348,8 +1365,6 @@
 					case "circular":
 					case "quadrate":
 					current.mouseRender.call(self, pos);
-					current.render.call(self, pos);
-					break;
 					default:
 					current.bufferRender.call(self, pos);
 					stepCount++;
@@ -1361,6 +1376,14 @@
 				}
 			} else {
 				current.mouseRender && current.mouseRender.call(self, pos);
+			}
+
+			if(window.event) {
+				e.returnValue = false;
+				e.cancelBubble = true;
+			} else {
+				e.preventDefault();
+				e.stopPropagation();
 			}
 		});
 
@@ -1413,10 +1436,10 @@
 		});
 
 		ele.addEvent(canvasWrap, "mouseleave", function() {
-			bufferCanvas2.width = bufferCanvas2.width;
+			bufferCanvas1.width = bufferCanvas1.width;
 		});
 
-		self.bufferCanvas = bufferCanvas1;
+		self.bufferCanvas = bufferCanvas2;
 
 		if(!_data) {
 			var _n = self.tab.build.call(self, mainCanvas, 0);

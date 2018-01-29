@@ -20,7 +20,7 @@
 				self.current.points.push(data.y);
 				self.textInput.style.cssText = "visibility: visible; z-index: 101; left: " + data.x + "px; top: " + (data.y-self.textInput.offsetHeight/2) + "px";
 				self.textInput.focus();
-				data = {type: "text", data: [data.x, data.y], status: 0, origin: !!origin, color: self.params.color, from: self.params.id};
+				data = {type: "text", data: [data.x, data.y], status: 0, origin: !!origin, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height};
 				self.current.interimBuffer.push(data);
 			}
 		},

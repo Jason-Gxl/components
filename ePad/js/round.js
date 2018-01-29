@@ -36,7 +36,7 @@
 				_data.push((originY+data.y)/2);
 				_data.push(Math.abs(xc)>Math.abs(yc)?Math.abs(xc)/2:Math.abs(yc)/2);
 				self.current.interimBuffer.pop();
-				data = {type: "round", data: _data, status: 0, mode: modeMap[self.current.name], origin: !!origin, color: self.params.color, from: self.params.id};
+				data = {type: "round", data: _data, status: 0, mode: modeMap[self.current.name], origin: !!origin, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height};
 				self.current.interimBuffer.push(data);
 				self.render(data);
 			}
