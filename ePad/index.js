@@ -462,7 +462,6 @@
 				ctx.stroke();
 			}
 
-			if(0!=params.status && params.origin) self.bufferCanvas.width = self.bufferCanvas.width;
 			ctx.save();
 			callback && callback();
 		},
@@ -1362,9 +1361,6 @@
 					case "ferula":
 					current.mouseRender.call(self, pos);
 					break;
-					case "circular":
-					case "quadrate":
-					current.mouseRender.call(self, pos);
 					default:
 					current.bufferRender.call(self, pos);
 					stepCount++;
