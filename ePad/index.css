@@ -8,6 +8,10 @@
 	overflow: hidden;
 }
 
+.pad-hide {
+	display: none;
+}
+
 .pad-wrap .split-page-wrap {
 	position: absolute;
     right: 5px;
@@ -148,20 +152,26 @@
 	margin-left: 0;
 }
 
-.pad-wrap .can-wrap {
+.pad-wrap .can-wrap-outer {
 	position: absolute;
 	height: calc(100% - 78px);
 	height+: calc(~'100% - 78px');
 	top: 38px;
 	width: 100%;
+	overflow: hidden;
+}
+
+.pad-wrap .can-wrap-outer .can-wrap {
+	position: absolute;
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
 }
 
 .pad-wrap .can-wrap canvas {
 	position: absolute;
 	top: 0;
 	left: 0;
-	width: 100%;
-	height: 100%;
 	z-index: 1;
 }
 
@@ -239,4 +249,43 @@
 	position: absolute;
 	z-index: -1;
 	visibility: hidden;
+}
+
+.pad-wrap .scroll-y-wrap {
+	position: absolute;
+    right: 0;
+    height: 100%;
+    width: 10px;
+    top: 0;
+    z-index: 20;
+}
+
+.pad-wrap .scroll-x-wrap {
+	position: absolute;
+    bottom: 0;
+    left: 0;
+    width: calc(100% - 20px);
+    width+: calc(~"100% - 10px"); 
+    height: 10px;
+    z-index: 20;
+}
+
+.pad-wrap .scroll-toolbar {
+	position: absolute;
+	left: 0;
+	top: 0;
+	cursor: pointer;
+	width: 100%;
+	border-radius: 3px;
+    box-shadow: 0 0 5px #666 inset;
+}
+
+.pad-wrap .scroll-x-wrap .scroll-x {
+	width: 200px;
+	height: 100%;
+}
+
+.pad-wrap .scroll-y-wrap .scroll-y {
+	width: 100%;
+	height: 200px;
 }

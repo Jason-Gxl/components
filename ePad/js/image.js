@@ -12,7 +12,7 @@
 		active: function() {},
 		renderBuffer: function(data) {
 			var self = this;
-			var data = {type: "image", data: [data], status: 0, from: self.params.id, width: self.params.width, height: self.params.height};
+			var data = {type: "image", data: [data], status: 0, origin: true, from: self.params.id, width: self.params.width, height: self.params.height};
 			self.toolbarMap.image.interimBuffer.push(data);
 		},
 		render: function(_data) {

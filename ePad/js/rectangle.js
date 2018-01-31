@@ -27,7 +27,7 @@
 				self.current.points[3] = data.y-(self.current.points[1]||0);
 				self.current.interimBuffer.pop();
 				data = [].concat.apply([], self.current.points);
-				data = {type: "rectangle", data: data, status: 0, mode: modeMap[self.current.name], origin: !!origin, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height};
+				data = {type: "rectangle", data: data, status: 0, mode: modeMap[self.current.name], origin: true, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height};
 				self.current.interimBuffer.push(data);
 				self.render(data);
 			}

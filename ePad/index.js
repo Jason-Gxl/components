@@ -5,6 +5,7 @@
 		padMap = {},
 		padCount = 0,
 		padTab = [],
+		isMobile = /\bmobile\b/i.test(navigator.userAgent),
 		layoutClassMap = {
 			leftTop: "left-top",
 			rightTop: "right-top",
@@ -81,14 +82,18 @@
 			<div class="toolbar-wrap">\
 				<ul class="toolbar-list">$TOOLBARS$</ul>\
 			</div>\
-			<div class="can-wrap">\
-				<input type="text" class="text-input tool-input"/>\
-				<canvas class="main-can">抱歉！您的浏览器版本太低，暂时不支持此白板！</canvas>\
-				<canvas class="buffer-can-4"></canvas>\
-				<canvas class="buffer-can-3"></canvas>\
-				<canvas class="buffer-can-2"></canvas>\
-				<canvas class="buffer-can-1"></canvas>\
-				<div class="split-page-wrap"></div>\
+			<div class="can-wrap-outer">\
+				<div class="can-wrap">\
+					<input type="text" class="text-input tool-input"/>\
+					<canvas class="main-can">抱歉！您的浏览器版本太低，暂时不支持此白板！</canvas>\
+					<canvas class="buffer-can-4"></canvas>\
+					<canvas class="buffer-can-3"></canvas>\
+					<canvas class="buffer-can-2"></canvas>\
+					<canvas class="buffer-can-1"></canvas>\
+					<div class="split-page-wrap"></div>\
+				</div>\
+				<div class="scroll-y-wrap pad-hide"><span class="scroll-y scroll-toolbar"></span></div>\
+				<div class="scroll-x-wrap pad-hide"><span class="scroll-x scroll-toolbar"></span></div>\
 			</div>\
 			<div class="pad-tab-wrap">\
 				<ul class="pad-tab-list"></ul>\
@@ -147,6 +152,49 @@
 			ele.style[attrName] = attrValue || "";
 		}
 	};
+
+	var scroll = (function() {
+		var moveEvent = function() {
+			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event,
+				type = moveEvent.type,
+				node = moveEvent.node,
+				rect = node.offsetParent.getBoundingClientRect();
+
+			if(0===type) {
+				var val = e.x - moveEvent.dValue - rect.x;
+				val = 0>val?0:(val + node.offsetWidth>rect.width?rect.width-node.offsetWidth:val);
+				node.style.left = val + "px";
+			} else {
+				var val = e.y - moveEvent.dValue - rect.y;
+				val = 0>val?0:(val + node.offsetHeight>rect.height?rect.height-node.offsetHeight:val);
+				node.style.top = val + "px";
+			}
+
+			moveEvent.callback(val);
+		};
+
+		return {
+			init: function(node, type, callback) {
+				ele.addEvent(node, "mousedown", function() {
+					var args = [].slice.call(arguments, 0),
+						e = args[0] || window.event,
+						start = 0===type?e.x:e.y,
+						rect = this.getBoundingClientRect();
+
+					moveEvent.type = type;
+					moveEvent.node = this;
+					moveEvent.callback = callback;
+					moveEvent.dValue = start - (0===type?rect.x:rect.y);
+					ele.addEvent(document, "mousemove", moveEvent);
+
+					ele.addEvent(document, "mouseup", function() {
+						ele.delEvent(document, "mousemove", moveEvent);
+					});
+				});				
+			}
+		};
+	}());
 
 	var data = {
 		copy: function() {
@@ -249,9 +297,48 @@
 				return container;
 			}
 		},
-		saveAsImage: function() {
+		saveAsImage: function(_data) {
 			var self = this,
-				mainCanvas = self.mainCanvas;
+				count = 0,
+				arr = [],
+				len = _data.length,
+				activeTab = self.tab.getActive(),
+				mainCanvas = self.mainCanvas,
+				createImageCanvas = self.createImageCanvas;
+
+			var next = function(_data) {
+				var d = _data.shift();
+
+				d && data.render.call(self, d, function() {
+					if(_data.length) {
+						next(_data);
+					} else {
+						var imgData=createImageCanvas.toDataURL();
+							createImageCanvas.width = createImageCanvas.width;
+							imgData = {type: "image", data: [imgData, 0, 0], status: 1, origin: true, from: "auto"};
+
+						self.tab.push.call(self, activeTab.id, imgData, true);
+
+						var d = arr.shift();
+						do {
+							self.tab.push.call(self, activeTab.id, d, true);
+							d = arr.shift();
+						} while(d);
+					}
+				}, true);
+			};
+
+			while(len--) {
+				var d = _data.pop();
+				arr.unshift(d);
+				1===d.from && d.origin && count++;
+
+				if(self.params.saveImgStep<=count) {
+					createImageCanvas.width = createImageCanvas.width;
+					next(_data);
+					break;
+				}
+			}
 		},
 		trim: function(content) {
 			if(!content || "[object String]"!=toString.call(content)) return ;
@@ -283,9 +370,9 @@
 
 			return list;
 		},
-		renderPen: function(params, callback) {
+		renderPen: function(params, callback, isCreateImage) {
 			var self = this,
-				canvas = 0===params.status?self.bufferCanvas:self.mainCanvas,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
 				ctx = canvas.getContext("2d");
 			
@@ -304,10 +391,10 @@
 			ctx.save();
 			callback && callback();
 		},
-		renderRect: function(params, callback) {
+		renderRect: function(params, callback, isCreateImage) {
 			var self = this,
 				mode = params.mode,
-				canvas = 0===params.status?self.bufferCanvas:self.mainCanvas,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
 				ctx = canvas.getContext("2d");
 
@@ -330,10 +417,10 @@
 			ctx.save();
 			callback && callback();
 		},
-		renderLine: function(params, callback) {
+		renderLine: function(params, callback, isCreateImage) {
 			var self = this,
 				mode = params.mode,
-				canvas = 0===params.status?self.bufferCanvas:self.mainCanvas,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
 				ctx = canvas.getContext("2d");
 
@@ -352,10 +439,10 @@
 			ctx.save();
 			callback && callback();
 		},
-		renderRound: function(params, callback) {
+		renderRound: function(params, callback, isCreateImage) {
 			var self = this,
 				mode = params.mode,
-				canvas = 0===params.status?self.bufferCanvas:self.mainCanvas,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
 				ctx = canvas.getContext("2d");
 
@@ -388,9 +475,9 @@
 			ctx.save();
 			callback && callback();
 		},
-		renderText: function(params, callback) {
+		renderText: function(params, callback, isCreateImage) {
 			var self = this,
-				canvas = 0===params.status?self.bufferCanvas:self.mainCanvas,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
 				ctx = canvas.getContext("2d");
 
@@ -406,9 +493,9 @@
 			ctx.save();
 			callback && callback();
 		},
-		renderImage: function(params, callback) {
+		renderImage: function(params, callback, isCreateImage) {
 			var self = this,
-				canvas = self.mainCanvas,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
 				img = new Image(),
 				ctx = canvas.getContext("2d");
@@ -435,9 +522,9 @@
 				callback && callback();
 			};
 		},
-		delete: function(params, callback) {
+		delete: function(params, callback, isCreateImage) {
 			var self = this,
-				canvas = 0===params.status?self.bufferCanvas:self.mainCanvas,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
 				ctx = canvas.getContext("2d");
 			
@@ -457,39 +544,40 @@
 				ctx.beginPath();
 				ctx.moveTo(data.x, data.y);
 				ctx.lineTo(data.x, data.y);
+				if(0!=params.status) self.bufferCanvas.width = self.bufferCanvas.width;
 			} else {
 				ctx.lineTo(data.x, data.y);
-				ctx.stroke();
 			}
 
+			ctx.stroke();
 			ctx.save();
 			callback && callback();
 		},
-		render: function(_data, callback) {
+		render: function(_data, callback, isCreateImage) {
 			var self = this,
 				type = _data.type;
 
 			switch(type) {
 				case "pen":
-				data.renderPen.call(self, _data, callback);
+				data.renderPen.call(self, _data, callback, isCreateImage);
 				break;
 				case "rectangle":
-				data.renderRect.call(self, _data, callback);
+				data.renderRect.call(self, _data, callback, isCreateImage);
 				break;
 				case "line":
-				data.renderLine.call(self, _data, callback);
+				data.renderLine.call(self, _data, callback, isCreateImage);
 				break;
 				case "round":
-				data.renderRound.call(self, _data, callback);
+				data.renderRound.call(self, _data, callback, isCreateImage);
 				break;
 				case "text":
-				data.renderText.call(self, _data, callback);
+				data.renderText.call(self, _data, callback, isCreateImage);
 				break;
 				case "image":
-				data.renderImage.call(self, _data, callback);
+				data.renderImage.call(self, _data, callback, isCreateImage);
 				break;
 				case "eraser":
-				data.delete.call(self, _data, callback);
+				data.delete.call(self, _data, callback, isCreateImage);
 			}
 		}
 	};
@@ -551,25 +639,8 @@
 				idList = [],
 				saving = false,
 				pageMap = {},
+				stepCountMap = {},
 				tabWrap = wrap.getElementsByClassName("pad-tab-list")[0];
-
-			var step = (function() {
-				var i = 0, arr = [], callback = null;
-
-				var _fn  = function() {
-					i++;
-					return callback(arr[i], _fn);
-				};
-
-				var _step = function(_data, start, _callback) {
-					arr = _data;
-					i = start;
-					callback = _callback;
-					return callback(_data[start], _fn);
-				};
-
-				return _step;
-			}());
 
 			self.build = function(canvas, type, _data, del) {
 				if(!canvas) return ;
@@ -636,10 +707,10 @@
 				return _id;
 			};
 
-			self.push = function(id, data) {
+			self.push = function(id, _data, isAutoSaveImage) {
 				var self = this;
 				!dataMap[id] && (dataMap[id] = []);
-				dataMap[id].push(data);
+				dataMap[id].push(_data);
 
 				if(!saving && !!+self.params.autoSaveTime) {
 					var it = setTimeout(function() {
@@ -649,6 +720,19 @@
 					}, self.params.autoSaveTime*1000);
 
 					saving = true;
+				}
+
+				if(!isAutoSaveImage) {
+					stepCountMap[id] = stepCountMap[id] || 0;
+
+					if(_data.origin) {
+						stepCountMap[id]++;
+
+						if(stepCountMap[id]>=self.params.saveImgStep && dataMap[id].length>5) {
+							stepCountMap[id] = 0;
+							data.saveAsImage.call(self, dataMap[id]);
+						}
+					}
 				}
 			};
 
@@ -674,16 +758,18 @@
 
 				if(_data && !activeObj.page) {
 					activeObj.canvas.width = activeObj.canvas.width;
-					var stepObj = null;
+					var i = 0, len = _data.length;
 
-					step(_data, 0, function(d, next) {
-						if(!d) return ;
-						stepObj = next;
+					var next = function() {
+						var d = _data[i];
 
-						return data.render.call(self, d, function() {
-							return stepObj();
+						d && data.render.call(self, d, function() {
+							i++;
+							i<len && next();
 						});
-					});
+					};
+
+					next();
 				}
 			};
 
@@ -1069,8 +1155,11 @@
 			curActiveNode = null,
 			curActiveChildNode = null,
 			fr = new FileReader(),
-			stepCount = 0,
 			active = false,
+			scrollWrapY = null,
+			scrollWrapX = null,
+			scrollY = null,
+			scrollX = null,
 			toolbarStr = "";
 
 		var colorInput = null,
@@ -1136,49 +1225,93 @@
 		var _data = params.data || JSON.parse(window.localStorage.getItem(self.id+"_pad"));
 		wrap.innerHTML = __str__;
 		this.toolbarMap = toolbarMap;
-		var canvasWrap = wrap.getElementsByClassName("can-wrap")[0],
+		
+		var	canvasWrap = wrap.getElementsByClassName("can-wrap")[0],
 			toolbarWrap = wrap.getElementsByClassName("toolbar-list")[0];
 
 		colorInput = wrap.getElementsByClassName("color-input")[0];
 		fileInput = wrap.getElementsByClassName("file-input")[0];
 		textInput = wrap.getElementsByClassName("text-input")[0];
 		mainCanvas = wrap.getElementsByClassName("main-can")[0];
+		scrollWrapX = wrap.getElementsByClassName("scroll-x-wrap")[0];
+		scrollWrapY = wrap.getElementsByClassName("scroll-y-wrap")[0];
+		scrollX = scrollWrapX.getElementsByClassName("scroll-x")[0];
+		scrollY = scrollWrapY.getElementsByClassName("scroll-y")[0];
 		bufferCanvas1 = wrap.getElementsByClassName("buffer-can-1")[0];
 		bufferCanvas2 = wrap.getElementsByClassName("buffer-can-2")[0];
 		bufferCanvas3 = wrap.getElementsByClassName("buffer-can-3")[0];
 		bufferCanvas4 = wrap.getElementsByClassName("buffer-can-4")[0];
-		var canvasWrapWidth = 0, canvasWrapHeight = 0;
+		var canvasWrapWidth = canvasWrap.clientWidth, 
+			canvasWrapHeight = canvasWrap.clientHeight;
+		mainCanvas.width = canvasWrapWidth;
+		mainCanvas.height = canvasWrapHeight;
+		bufferCanvas1.width = canvasWrapWidth;
+		bufferCanvas1.height = canvasWrapHeight;
+		bufferCanvas2.width = canvasWrapWidth;
+		bufferCanvas2.height = canvasWrapHeight;
+		bufferCanvas3.width = canvasWrapWidth;
+		bufferCanvas3.height = canvasWrapHeight;
+		bufferCanvas4.width = canvasWrapWidth;
+		bufferCanvas4.height = canvasWrapHeight;
+		params.width = canvasWrapWidth;
+		params.height = canvasWrapHeight;
 
-		var resizeCanvas = function() {
-			var ww = canvasWrap.clientWidth, wh = canvasWrap.clientHeight;
-			
-			if(ww!=canvasWrapWidth || wh!=canvasWrapHeight) {
-				canvasWrapWidth = ww;
-				canvasWrapHeight = wh;
-				mainCanvas.width = canvasWrapWidth;
-				mainCanvas.height = canvasWrapHeight;
-				bufferCanvas1.width = canvasWrapWidth;
-				bufferCanvas1.height = canvasWrapHeight;
-				bufferCanvas2.width = canvasWrapWidth;
-				bufferCanvas2.height = canvasWrapHeight;
-				bufferCanvas3.width = canvasWrapWidth;
-				bufferCanvas3.height = canvasWrapHeight;
-				bufferCanvas4.width = canvasWrapWidth;
-				bufferCanvas4.height = canvasWrapHeight;
-				params.width = canvasWrapWidth;
-				params.height = canvasWrapHeight;
+		var resizePad = function() {
+			var canvasWrapWidth = canvasWrap.clientWidth,
+				canvasWrapHeight = canvasWrap.clientHeight;
+
+			if(canvasWrapWidth<params.width) {
+				ele.removeClass(scrollWrapX, "pad-hide");
+				var scrollWidth = canvasWrapWidth - (params.width - canvasWrapWidth);
+				scrollWidth = scrollWidth<10?10:scrollWidth;
+				scrollX.style.width = scrollWidth + "px";
+			} else {
+				ele.addClass(scrollWrapX, "pad-hide");
+			}
+
+			if(canvasWrapHeight<params.height) {
+				ele.removeClass(scrollWrapY, "pad-hide");
+				var scrollHeight = canvasWrapHeight - (params.height - canvasWrapHeight);
+				scrollHeight = scrollHeight<10?10:scrollHeight;
+				scrollY.style.height = scrollHeight + "px";
+			} else {
+				ele.addClass(scrollWrapY, "pad-hide");
 			}
 		};
 		
 		ele.addEvent(window, "resize", function() {
-			resizeCanvas();
-			self.tab.active.call(self, self.tab.getActive().id);
+			resizePad();
 		});
 
-		resizeCanvas();
+		ele.addEvent(canvasWrap, "mousewheel", function() {
+			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event;
+
+			canvasWrap.scrollTop = canvasWrap.scrollTop + e.deltaY;
+			scrollY.style.top = (scrollWrapY.clientHeight - scrollY.offsetHeight)*(canvasWrap.scrollTop/(canvasWrap.scrollHeight - canvasWrap.clientHeight)) + "px";
+		});
+
+		scroll.init(scrollX, 0, function(val) {
+			var rect = scrollWrapX.getBoundingClientRect(),
+				moveDest = rect.width - scrollX.offsetWidth,
+				hideWidth = canvasWrap.scrollWidth - canvasWrap.offsetWidth;
+
+			canvasWrap.scrollLeft = val*(hideWidth/moveDest);
+		});
+
+		scroll.init(scrollY, 1, function(val) {
+			var rect = scrollWrapY.getBoundingClientRect(),
+				moveDest = rect.height - scrollY.offsetHeight,
+				hideHeight = canvasWrap.scrollHeight - canvasWrap.offsetHeight;
+
+			canvasWrap.scrollTop = val*(hideHeight/moveDest);
+		});
+
+		resizePad();
 		self.tab = new Tab(params.wrap);
 		self.textInput = textInput;
 		self.mouseIconCanvas = bufferCanvas1;
+		self.createImageCanvas = bufferCanvas3;
 		ele.css(mainCanvas, "background", self.params.background);
 		ele.css(bufferCanvas4, "background", self.params.background);
 
@@ -1366,12 +1499,6 @@
 					current.mouseRender.call(self, pos);
 					default:
 					current.bufferRender.call(self, pos);
-					stepCount++;
-
-					if(stepCount>=params.saveImgStep) {
-						data.saveAsImage.call(self);
-						stepCount = 0;
-					}
 				}
 			} else {
 				current.mouseRender && current.mouseRender.call(self, pos);
@@ -1424,14 +1551,6 @@
 				e = args[0] || window.event;
 			active = false;
 			current && current.render && current.render.call(self);
-
-			if(window.event) {
-				e.returnValue = false;
-				e.cancelBubble = true;
-			} else {
-				e.preventDefault();
-				e.stopPropagation();
-			}
 		});
 
 		ele.addEvent(canvasWrap, "mouseleave", function() {
