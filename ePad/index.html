@@ -16,16 +16,16 @@
 		}
 
 		#pad1 {
-			width: 100%;
-			height: 100%;
-			display: inline-block;
-		}
-
-		/*#pad2 {
 			width: 800px;
 			height: 500px;
 			display: inline-block;
-		}*/
+		}
+
+		#pad2 {
+			width: 800px;
+			height: 500px;
+			display: inline-block;
+		}
 	</style>
 </head>
 <body>
@@ -50,8 +50,8 @@ var pad1 = wPad.init({
 	autoSaveTime: 5,
 	disable: false,
 	render: function(data) {
-		//pad2.render(data);
-		//console.log(data);
+		pad2.render(data);
+		console.log(data);
 	},
 	mousemove: function(data) {
 		//pad2.mouseCtrl(data);
@@ -61,7 +61,7 @@ var pad1 = wPad.init({
 	}
 });
 
-/*var pad2 = wPad.init({
+var pad2 = wPad.init({
 	id: 2,
 	wrap: document.getElementById("pad2"),
 	background: "#fff",
@@ -77,6 +77,6 @@ var pad1 = wPad.init({
 	clear: function(id) {
 		//console.log("clear------"+id);
 	}
-});*/
+});
 </script>
 </html>
