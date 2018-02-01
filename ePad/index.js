@@ -662,6 +662,14 @@
 						 	e = args[0] || window.event,
 						 	index = idList.indexOf(_id);
 
+						if(window.event) {
+							e.returnValue = false;
+							e.cancelBubble = true;
+						} else {
+							e.preventDefault();
+							e.stopPropagation();
+						}
+
 						delete tabMap[_id];
 						delete dataMap[_id];
 						delete canvasMap[_id];
@@ -677,15 +685,6 @@
 						_id = idList[index-1>=0?index-1:0];
 						self.active.call(that, _id);
 						window.localStorage.setItem(that.id+"_pad", JSON.stringify(that.container));
-						
-						//这里需要将前面一个标签对应的数据渲染出来
-						if(window.event) {
-							e.returnValue = false;
-							e.cancelBubble = true;
-						} else {
-							e.preventDefault();
-							e.stopPropagation();
-						}
 					});
 				}
 
