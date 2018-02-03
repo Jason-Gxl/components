@@ -14,6 +14,7 @@
 		},
 		defaultConfig = {
 			layout: "leftTop",
+			size: "100%",
 			vertical: false,
 			disable: false,
 			wrap: document.body,
@@ -197,6 +198,11 @@
 	}());
 
 	var data = {
+		get uuid() {
+			var len = 20, str = ""
+			for(;str.length<len;str+=Math.random().toString().substr(2));
+			return str.substr(0, len);
+		},
 		copy: function() {
 			var args = [].slice.call(arguments, 0),
 				firstArg = args.shift(),
@@ -297,27 +303,34 @@
 				return container;
 			}
 		},
-		saveAsImage: function(_data) {
+		saveAsImage: function(_data, type) {
 			var self = this,
 				count = 0,
 				arr = [],
 				len = _data.length,
-				activeTab = self.tab.getActive(),
 				mainCanvas = self.mainCanvas,
+				activeTab = self.tab.getActive(),
 				createImageCanvas = self.createImageCanvas;
 
-			var next = function(_data) {
-				var d = _data.shift();
+			var next = function(list) {
+				var d = list.shift();
 
 				d && data.render.call(self, d, function() {
-					if(_data.length) {
-						next(_data);
+					if(list.length) {
+						next(list);
 					} else {
 						var imgData=createImageCanvas.toDataURL();
-							createImageCanvas.width = createImageCanvas.width;
-							imgData = {type: "image", data: [imgData, 0, 0], status: 1, origin: true, from: "auto"};
-
-						self.tab.push.call(self, activeTab.id, imgData, true);
+						createImageCanvas.width = createImageCanvas.width;
+						var _data = {
+							data: [imgData, 0, 0],
+							type: "image",
+							width: 0,
+							height: 0,
+							status: 1, 
+							origin: true, 
+							from: "auto"
+						};
+						self.tab.push.call(self, activeTab.id, _data, true);
 
 						var d = arr.shift();
 						do {
@@ -331,7 +344,7 @@
 			while(len--) {
 				var d = _data.pop();
 				arr.unshift(d);
-				1===d.from && d.origin && count++;
+				d.origin && count++;
 
 				if(self.params.saveImgStep<=count) {
 					createImageCanvas.width = createImageCanvas.width;
@@ -407,8 +420,7 @@
 			if(0===params.mode) {
 				ctx.strokeStyle = params.color;
 				ctx.lineWidth = 1;
-				ctx.rect(data[0], data[1], data[2], data[3]);
-				ctx.stroke();
+				ctx.strokeRect(data[0], data[1], data[2], data[3]);
 			} else {
 				ctx.fillStyle = params.color;
 				ctx.fillRect(data[0], data[1], data[2], data[3]);
@@ -588,19 +600,18 @@
 				canvas = self.mouseIconCanvas,
 				data = params.data,
 				mode = params.mode,
-				eraserSize = self.params.eraserSize,
 				ctx = canvas.getContext("2d");
 
 			canvas.width = canvas.width;
 			ctx.beginPath();
 
 			if(0===mode) {
-				ctx.arc(data[0], data[1], eraserSize/2, 0, 2*Math.PI);
+				ctx.arc(data[0], data[1], data[2]/2, 0, 2*Math.PI);
 				ctx.stroke();
 			} else {
-				var px = data[0]-eraserSize/2,
-					py = data[1]-eraserSize/2;
-				ctx.rect(px, py, eraserSize, eraserSize);
+				var px = data[0]-data[2]/2,
+					py = data[1]-data[2]/2;
+				ctx.rect(px, py, data[2], data[2]);
 				ctx.stroke();
 			}
 		},
@@ -618,8 +629,7 @@
 			ctx.fill();
 		},
 		render: function(_data) {
-			var self = this,
-				type = _data.type;
+			var self = this, type = _data.type;
 			mouse[type] && mouse[type].call(self, _data);
 		}
 	};
@@ -631,7 +641,6 @@
 
 		function _tab(wrap) {
 			var self = this,
-				id = 0,
 				tabMap = {},
 				dataMap = {},
 				canvasMap = {},
@@ -642,10 +651,10 @@
 				stepCountMap = {},
 				tabWrap = wrap.getElementsByClassName("pad-tab-list")[0];
 
-			self.build = function(canvas, type, _data, del) {
+			self.build = function(canvas, type, _data, id, del) {
 				if(!canvas) return ;
 				var that = this,
-					_id = id,
+					_id = id || (0===type?0:data.uuid),
 					_tabTpl = tabTpl.replace(/\$LABEL\$/g, tabNameMap[type]).replace(/\$DELETEBTN\$/g, del?delTpl:"");
 
 				UL.innerHTML = _tabTpl;
@@ -659,9 +668,8 @@
 				if(del) {
 					ele.addEvent(li.getElementsByTagName("i")[0], "click", function() {
 						var args = [].slice.call(arguments, 0),
-						 	e = args[0] || window.event,
-						 	index = idList.indexOf(_id);
-
+						 	e = args[0] || window.event;
+						
 						if(window.event) {
 							e.returnValue = false;
 							e.cancelBubble = true;
@@ -670,28 +678,22 @@
 							e.stopPropagation();
 						}
 
-						delete tabMap[_id];
-						delete dataMap[_id];
-						delete canvasMap[_id];
-						delete that.container[_id];
-
-						if(pageMap[_id]) {
-							pageMap[_id].hide();
-							delete pageMap[_id];
-						}
-
-						tabWrap.removeChild(li);
-						idList.splice(index, 1);
-						_id = idList[index-1>=0?index-1:0];
-						self.active.call(that, _id);
-						window.localStorage.setItem(that.id+"_pad", JSON.stringify(that.container));
+						self.remove.call(that, _id);
+						that.params.onTabRemove && that.params.onTabRemove(_id);
 					});
 				}
 
 				ele.addEvent(li, "click", function() {
 					if(this===activeObj.tab) return ;
-					activeObj.page && activeObj.page.hide();
 					self.active.call(that, _id);
+
+					if(that.params.onTabChange) {
+						if(0===type) {
+							that.params.onTabChange(_id);
+						} else {
+							that.params.onTabChange(_id, dataMap[_id][0]);
+						}
+					}
 				});
 
 				id++;
@@ -700,7 +702,8 @@
 				that.container[_id] = {
 					data: dataMap[_id],
 					type: type,
-					splitPage: 0
+					splitPage: 0,
+					del: del
 				};
 
 				return _id;
@@ -727,21 +730,46 @@
 					if(_data.origin) {
 						stepCountMap[id]++;
 
-						if(stepCountMap[id]>=self.params.saveImgStep && dataMap[id].length>5) {
+						if(stepCountMap[id]>=self.params.saveImgStep && dataMap[id].length>self.params.saveImgStep) {
 							stepCountMap[id] = 0;
-							data.saveAsImage.call(self, dataMap[id]);
+							data.saveAsImage.call(self, dataMap[id], self.container[id].type);
 						}
 					}
 				}
 			};
 
-			self.active = function(_id) {
+			self.remove = function(_id) {
 				var self = this,
-					_data = dataMap[_id];
+					li = tabMap[_id],
+					index = idList.indexOf(_id);
+				delete tabMap[_id];
+				delete dataMap[_id];
+				delete canvasMap[_id];
+				delete self.container[_id];
+
+				if(pageMap[_id]) {
+					pageMap[_id].hide();
+					delete pageMap[_id];
+				}
+
+				tabWrap.removeChild(li);
+				idList.splice(index, 1);
+				_id = idList[index-1>=0?index-1:0];
+				self.tab.active.call(self, _id);
+				window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
+			};
+
+			self.active = function(_id) {
+				var self = this, _data = dataMap[_id];
 
 				if(activeObj.canvas) {
 					ele.css(activeObj.canvas, "zIndex");
 					ele.removeClass(activeObj.tab, "active");
+				}
+
+				if(activeObj.page) {
+					activeObj.page.hide();
+					delete activeObj.page;
 				}
 
 				activeObj.tab = tabMap[_id];
@@ -776,15 +804,31 @@
 				return activeObj;
 			};
 
+			self.getTab = function(id) {
+				return tabMap[id];
+			};
+
 			self.clear = function(id) {
 				var self = this;
 
 				if(void(0)===id) {
 					activeObj.data.length = 0;
+					self.container[activeObj.id].splitPage = 0;
 					activeObj.canvas.width = activeObj.canvas.width;
+
+					if(activeObj.page) {
+						activeObj.page.hide();
+						delete activeObj.page;
+					}
 				} else {
 					dataMap[id].length = 0;
+					self.container[id].splitPage = 0;
 					canvasMap[id].width = canvasMap[id].width;
+
+					if(pageMap[id]) {
+						pageMap[id].hide();
+						delete pageMap[id];
+					}
 				}
 
 				window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
@@ -794,6 +838,10 @@
 				var that = this;
 				pageMap[id] = page;
 				that.container[id].splitPage = 1;
+			};
+
+			self.getPage = function(id) {
+				return pageMap[id];
 			};
 		}
 
@@ -870,9 +918,9 @@
 			} else {
 				data.render.call(that, __data);
 			}
-		}
+		};
 
-		this.go = function(pageNumber) {
+		this.go = function(pageNumber, out) {
 			pageNumber = pageNumber<=1?1:pageNumber;
 			pageNumber = pageNumber>=total?total:pageNumber;
 			that.mainCanvas.width = that.mainCanvas.width;
@@ -893,6 +941,8 @@
 					ele.removeClass(prePageBtn, "no");
 					ele.removeClass(nextPageBtn, "no");
 			}
+
+			!out && that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber);
 		};
 
 		this.next = function() {
@@ -901,12 +951,14 @@
 		};
 
 		this.show = function() {
+			pageWrap.innerHTML = "";
 			pageWrap.appendChild(pageEle);
 			that.page = self;
 			this.go(currentPage);
 		};
 
 		this.hide = function() {
+			if(that.page!=self) return ;
 			pageWrap.removeChild(pageEle);
 			delete that.page;
 		};
@@ -932,24 +984,24 @@
 					height: 0,
 					status: 1,
 					type: "image",
-					from: 1
+					from: params.from
 				}];
 
 				that.tab.push.call(that, tabId, _data[i][0]);
 			}
 		});
 
-		this.push = function(data) {
-			if("image"===data.type) return ;
+		this.push = function(data, id) {
 			var activeTab = that.tab.getActive();
 			data.pageNumber = currentPage;
 			_data[currentPage-1].push(data);
-			that.tab.push.call(that, activeTab.id, data);
+			that.tab.push.call(that, void(0)===id?activeTab.id:id, data);
 		};
 
 		that.params.disable && this.disable();
 
 		if(show) {
+			pageWrap.innerHTML = "";
 			pageWrap.appendChild(pageEle);
 			self.go(1);
 		}
@@ -970,7 +1022,7 @@
 			waitList: [],
 			container: {},
 			id: params.id || padCount++,
-			render: function(_data, storage) {
+			render: function(_data) {
 				data.render.call(that, _data);
 				_data.width = that.mainCanvas.width;
 				_data.height = that.mainCanvas.height;
@@ -985,7 +1037,7 @@
 					}
 				}
 
-				if(params.render) {
+				if(params.onRender) {
 					var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
 
 					obj[activeTab.id] = {
@@ -994,7 +1046,7 @@
 						splitPage: activeTab.page?1:0
 					};
 
-					params.render(obj);
+					params.onRender(obj);
 				}
 			},
 			mouseRender: function(_data) {
@@ -1002,7 +1054,7 @@
 				_data.width = that.mainCanvas.width;
 				_data.height = that.mainCanvas.height;
 
-				if(params.mousemove) {
+				if(params.onMousemove) {
 					var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
 
 					obj[activeTab.id] = {
@@ -1010,7 +1062,7 @@
 						type: activeTab.type
 					};
 
-					params.mousemove(obj);
+					params.onMousemove(obj);
 				}
 			}
 		};
@@ -1051,12 +1103,30 @@
 					if(val.data[3]) val.data[3] = !isNaN(val.data[3])?val.data[3] * scaleWidth:val.data[3];
 				}
 
-				if(val.status) {
-					that.tab.push.call(that, +key, val);
-				}
-
-				if(+key===activeTab.id) {
+				if(key==activeTab.id) {
 					data.render.call(that, val);
+
+					if(val.status) {
+						if(activeTab.page) {
+							activeTab.page.push.call(that, val);
+						} else {
+							that.tab.push.call(that, key, val);
+						}
+					}
+				} else {
+					if(that.tab.getTab(key)) {
+						if(val.status) {
+							var page = that.tab.getPage(key);
+
+							if(page) {
+								page.push.call(taht, val, key);
+							} else {
+								that.tab.push.call(that, key, val);
+							}
+						}
+					} else {
+						that.tab.build.call(that, that.fileCanvas, 1, [val], key, false);
+					}
 				}
 			}
 		};
@@ -1132,6 +1202,24 @@
 
 		this.createImage = function() {
 			return that.mainCanvas.toDataURL();
+		};
+
+		this.changeTab = function(id) {
+			that.tab.active.call(that, id);
+		};
+
+		this.turnPage = function(id, number) {
+			var activeTab = that.tab.getActive();
+
+			if(id===activeTab.id) {
+				var pageObj = that.tab.getPage.call(that, id);
+				pageObj.go(number, true);
+			}
+		};
+
+		this.removeTab = function(id) {
+			if(void(0)===id) return ;
+			that.tab.remove.call(that, id);
 		};
 
 		ele.addEvent(params.wrap, "mouseenter", function() {
@@ -1240,8 +1328,22 @@
 		bufferCanvas2 = wrap.getElementsByClassName("buffer-can-2")[0];
 		bufferCanvas3 = wrap.getElementsByClassName("buffer-can-3")[0];
 		bufferCanvas4 = wrap.getElementsByClassName("buffer-can-4")[0];
-		var canvasWrapWidth = canvasWrap.clientWidth, 
-			canvasWrapHeight = canvasWrap.clientHeight;
+
+		if("100%"===params.size) {
+			var canvasWrapWidth = canvasWrap.clientWidth, 
+				canvasWrapHeight = canvasWrap.clientHeight;
+		} else {
+			var sizeArr = params.size.split(/\*/);
+
+			if(2!=sizeArr.length) {
+				var canvasWrapWidth = canvasWrap.clientWidth, 
+					canvasWrapHeight = canvasWrap.clientHeight;
+			} else {
+				var canvasWrapWidth = isNaN(sizeArr[0])?canvasWrap.clientWidth:sizeArr[0],
+					canvasWrapHeight = isNaN(sizeArr[1])?canvasWrap.clientHeight:sizeArr[1];
+			}
+		}
+		
 		mainCanvas.width = canvasWrapWidth;
 		mainCanvas.height = canvasWrapHeight;
 		bufferCanvas1.width = canvasWrapWidth;
@@ -1311,6 +1413,7 @@
 		self.textInput = textInput;
 		self.mouseIconCanvas = bufferCanvas1;
 		self.createImageCanvas = bufferCanvas3;
+		self.fileCanvas = bufferCanvas4;
 		ele.css(mainCanvas, "background", self.params.background);
 		ele.css(bufferCanvas4, "background", self.params.background);
 
@@ -1318,8 +1421,13 @@
 			self.params.color = this.value;
 		});
 
-		self.pad.showFiles = function(files, newTab, isShow) {
-			var splitPage = "[object Array]"===toString.call(files) && files.length>1?true:false,
+		self.pad.showFiles = function(params) {
+			var files = params.files,
+				newTab = params.newTab,
+				isShow = params.isShow,
+				from = params.from,
+				tabId = params.tabId,
+				splitPage = "[object Array]"===toString.call(files) && files.length>1?true:false,
 				activeTab = self.tab.getActive();
 
 			var _showFiles = function() {
@@ -1336,13 +1444,24 @@
 					self.tab.setPage.call(self, void(0)!=id?id:activeTab.id, pageObj);
 					activeTab.page = pageObj;
 				} else {
-					self.toolbarMap.image.renderBuffer.call(self, files);
-					self.toolbarMap.image.render.call(self, [0, 0]);
+					var _data = {
+						data: [files, 0, 0],
+						width: 0,
+						height: 0,
+						status: 1,
+						type: "image",
+						origin: true,
+						from: from
+					};
+
+					data.render.call(self, _data);
+					self.tab.push.call(self, newTab?id:activeTab.id, _data);
 				}
 			};
 
 			if(newTab) {
-				var id = self.tab.build.call(self, bufferCanvas4, 1, null, true);
+				var id = self.tab.build.call(self, bufferCanvas4, 1, null, tabId, from===self.params.id);
+				params.tabId = id;
 
 				if(isShow) {
 					self.tab.active.call(self, id);
@@ -1388,8 +1507,6 @@
 				current.lesser && current.lesser.call(self);
 				break;
 			}
-
-			console.log(e);
 		});
 
 		ele.addEvent(toolbarWrap, "click", function() {
@@ -1417,10 +1534,10 @@
 				break;
 				case "clear":
 				self.tab.clear.call(self);
-				params.clear && "[object Function]"===toString.call(params.clear) && params.clear(self.tab.getActive().id);
+				params.onClear && "[object Function]"===toString.call(params.onClear) && params.onClear(self.tab.getActive().id);
 				break;
 				case "export":
-				var image = self.mainCanvas.toDataURL().replace(/image\/png/, "image/octet-stream;Content-Disposition: attachment;filename="+((Math.random()*10000000000)>>0)+".png");
+				var image = self.mainCanvas.toDataURL().replace(/image\/png/, "image/octet-stream;Content-Disposition:attachment;filename="+data.uuid+".png");
 				location.href = image;
 				break;
 				case "image":
@@ -1564,7 +1681,7 @@
 		} else {
 			for(var key in _data) {
 				var val = _data[key];
-				var _n = self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, val.type, val.data, 0!=val.type);
+				var _n = self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, val.type, val.data, key, val.del);
 
 				if(val.splitPage) {
 					var pageObj = new Page({

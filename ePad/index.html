@@ -15,15 +15,19 @@
 			text-align: center;
 		}
 
+		ul, li {
+			list-style: none;
+		}
+
 		#pad1 {
-			width: 800px;
-			height: 500px;
+			width: 850px;
+			height: 600px;
 			display: inline-block;
 		}
 
 		#pad2 {
-			width: 800px;
-			height: 500px;
+			width: 850px;
+			height: 600px;
 			display: inline-block;
 		}
 	</style>
@@ -31,6 +35,18 @@
 <body>
 	<div id="pad1"></div>
 	<div id="pad2"></div>
+	<div>
+		<form name="fileForm">
+			<ul class="file-list-wrap">
+				<li class="file-item-wrap">
+					<label>文件路径：</label>
+					<input type="text" name="file0"/>
+				</li>
+			</ul>
+		</form>
+		<input type="button" value="添加" id="add_btn"/>
+		<input type="button" value="演示" id="show_btn"/>
+	</div>
 </body>
 <script type="text/javascript" src="./js/pen.js"></script>
 <script type="text/javascript" src="./js/rectangle.js"></script>
@@ -43,39 +59,90 @@
 <script type="text/javascript" src="./index.js"></script>
 <!-- <script type="text/javascript" src="./dist/js/index.min.js"></script> -->
 <script type="text/javascript">
+var number = 0,
+	fileListWrap = document.getElementsByClassName("file-list-wrap")[0],
+	fileWrapItem = fileListWrap.getElementsByClassName("file-item-wrap")[0];
+
+document.getElementById("add_btn").addEventListener("click", function() {
+	number++;
+	var _fileWrapItem = fileWrapItem.cloneNode(1);
+	_fileWrapItem.getElementsByTagName("input")[0].name = "file"+number;
+	fileListWrap.appendChild(_fileWrapItem);
+});
+
+document.getElementById("show_btn").addEventListener("click", function() {
+	var files = [],
+		fileInputs = [].slice.call(fileListWrap.getElementsByTagName("input"), 0);
+
+	fileInputs.forEach(function(fileItem) {
+		files.push(fileItem.value);
+	});
+
+	var data = {
+		files: files,
+		newTab: true,
+		isShow: true,
+		from: 1
+	};
+
+	pad1.showFiles(data);
+	pad2.showFiles(data);
+});
+
 var pad1 = wPad.init({
 	id: 1,
+	size: "800*450",
 	wrap: document.getElementById("pad1"),
 	background: "#fff",
 	autoSaveTime: 5,
 	disable: false,
-	render: function(data) {
+	onRender: function(data) {
 		pad2.render(data);
 		console.log(data);
 	},
-	mousemove: function(data) {
-		//pad2.mouseCtrl(data);
+	onMousemove: function(data) {
+		console.log(data);
+		pad2.mouseCtrl(data);
 	},
-	clear: function(id) {
-		//console.log("clear------"+id);
+	onClear: function(id) {
+		pad2.clear(id);
+	},
+	onTabChange: function(id) {
+		pad2.changeTab(id);
+	},
+	onTabRemove: function(id) {
+		pad2.removeTab(id);
+	},
+	onPageTurn: function(id, pageNumber) {
+		pad2.turnPage(id, pageNumber);
 	}
 });
 
 var pad2 = wPad.init({
 	id: 2,
+	size: "640*360",
 	wrap: document.getElementById("pad2"),
 	background: "#fff",
-	autoSaveTime: 10,
-	disable: true,
-	render: function(data) {
-		//console.log(data);
-		//pad1.render(data);
+	autoSaveTime: 5,
+	disable: false,
+	onRender: function(data) {
+		pad1.render(data);
+		console.log(data);
 	},
-	mousemove: function(data) {
-		//console.log(data);
+	onMousemove: function(data) {
+		//pad1.mouseCtrl(data);
 	},
-	clear: function(id) {
-		//console.log("clear------"+id);
+	onClear: function(id) {
+		pad1.clear(id);
+	},
+	onTabChange: function(id) {
+		pad1.changeTab(id);
+	},
+	onTabRemove: function(id) {
+		pad1.removeTab(id);
+	},
+	onPageTurn: function(id, pageNumber) {
+		pad1.turnPage(id, pageNumber);
 	}
 });
 </script>

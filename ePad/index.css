@@ -50,6 +50,8 @@
     width: 30px;
     text-align: center;
     outline: none;
+    margin: 0;
+    padding: 0;
 }
 
 .pad-wrap ul, .pad-wrap li {

@@ -18,7 +18,7 @@
 		active: function() {},
 		mouseRender: function(data) {
 			var self = this;
-			data = {type: "eraser", data: [data.x, data.y], mode: modeMap[self.current.name], from: self.params.id};
+			data = {type: "eraser", data: [data.x, data.y, self.params.eraserSize], mode: modeMap[self.current.name], from: self.params.id};
 			pos = data;
 			self.mouseRender.call(self, data);
 		},
@@ -30,14 +30,14 @@
 
 			eraserSize++;
 			self.params.eraserSize = Math.min.apply(Math, [eraserSize, cw, ch]);
+			pos.data[2] = self.params.eraserSize;
 			self.mouseRender.call(self, pos);
 		},
 		lesser: function() {
-			var self = this,
-				eraserSize = self.params.eraserSize;
-
+			var self = this, eraserSize = self.params.eraserSize;
 			eraserSize--;
 			self.params.eraserSize = Math.max.apply(Math, [5, eraserSize]);
+			pos.data[2] = self.params.eraserSize;
 			self.mouseRender.call(self, pos);
 		},
 		bufferRender: function(data, origin) {
