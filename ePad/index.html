@@ -108,12 +108,14 @@ var pad1 = wPad.init({
 		pad2.clear(id);
 	},
 	onTabChange: function(id) {
+		console.log(1);
 		pad2.changeTab(id);
 	},
 	onTabRemove: function(id) {
 		pad2.removeTab(id);
 	},
-	onPageTurn: function(id, pageNumber) {
+	onPageTurn: function(id, pageNumber, data) {
+		console.log(data);
 		pad2.turnPage(id, pageNumber);
 	}
 });

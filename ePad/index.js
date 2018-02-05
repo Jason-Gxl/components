@@ -307,38 +307,49 @@
 			var self = this,
 				count = 0,
 				arr = [],
+				file = null,
 				len = _data.length,
 				mainCanvas = self.mainCanvas,
 				activeTab = self.tab.getActive(),
 				createImageCanvas = self.createImageCanvas;
 
+			var _createImage = function() {
+				var imgData=createImageCanvas.toDataURL(),
+					page = self.tab.getPage(activeTab.id);
+				createImageCanvas.width = createImageCanvas.width;
+
+				var _data_ = {
+					data: [imgData, 0, 0],
+					type: "image",
+					width: 0,
+					height: 0,
+					status: 1, 
+					origin: true,
+					from: "auto"
+				};
+
+				if(page) {
+					_data_.pageNumber = page.getPageNumber();
+				}
+
+				file && _data.push(file);
+				_data.push(_data_);
+				[].push.apply(_data, arr);
+				self.tab.saveData.call(self);
+			};
+
 			var next = function(list) {
 				var d = list.shift();
+				if(!d) return _createImage();
 
-				d && data.render.call(self, d, function() {
-					if(list.length) {
+				if("file"===d.type) {
+					file = d;
+					next(list);
+				} else {
+					data.render.call(self, d, function() {
 						next(list);
-					} else {
-						var imgData=createImageCanvas.toDataURL();
-						createImageCanvas.width = createImageCanvas.width;
-						var _data = {
-							data: [imgData, 0, 0],
-							type: "image",
-							width: 0,
-							height: 0,
-							status: 1, 
-							origin: true, 
-							from: "auto"
-						};
-						self.tab.push.call(self, activeTab.id, _data, true);
-
-						var d = arr.shift();
-						do {
-							self.tab.push.call(self, activeTab.id, d, true);
-							d = arr.shift();
-						} while(d);
-					}
-				}, true);
+					}, true);
+				}
 			};
 
 			while(len--) {
@@ -348,7 +359,13 @@
 
 				if(self.params.saveImgStep<=count) {
 					createImageCanvas.width = createImageCanvas.width;
-					next(_data);
+
+					if(_data.length) {
+						next(_data);
+					} else {
+						[].push.apply(_data, arr);
+					}
+
 					break;
 				}
 			}
@@ -516,7 +533,13 @@
 			var cw = canvas.clientWidth, ch = canvas.clientHeight;
 
 			img.onload = function() {
-				var dw = cw - img.width, dh = ch - img.height;
+				var imgWidth = img.width, 
+					imgHeight = img.height,
+					dw = cw - img.width, 
+					dh = ch - img.height;
+
+				data.width = imgWidth;
+				data.height = imgHeight;
 
 				if(dw>=0 && dh>=0) {
 					ctx.drawImage(img, dw/2, dh/2);
@@ -566,8 +589,7 @@
 			callback && callback();
 		},
 		render: function(_data, callback, isCreateImage) {
-			var self = this,
-				type = _data.type;
+			var self = this, type = _data.type;
 
 			switch(type) {
 				case "pen":
@@ -586,6 +608,9 @@
 				data.renderText.call(self, _data, callback, isCreateImage);
 				break;
 				case "image":
+				data.renderImage.call(self, _data, callback, isCreateImage);
+				break;
+				case "file":
 				data.renderImage.call(self, _data, callback, isCreateImage);
 				break;
 				case "eraser":
@@ -685,15 +710,8 @@
 
 				ele.addEvent(li, "click", function() {
 					if(this===activeObj.tab) return ;
+					that.params.onTabChange && that.params.onTabChange(_id);
 					self.active.call(that, _id);
-
-					if(that.params.onTabChange) {
-						if(0===type) {
-							that.params.onTabChange(_id);
-						} else {
-							that.params.onTabChange(_id, dataMap[_id][0]);
-						}
-					}
 				});
 
 				id++;
@@ -709,33 +727,43 @@
 				return _id;
 			};
 
-			self.push = function(id, _data, isAutoSaveImage) {
+			self.push = function(id, _data) {
 				var self = this;
-				!dataMap[id] && (dataMap[id] = []);
+				if(!dataMap[id]) dataMap[id] = [];
 				dataMap[id].push(_data);
+				self.tab.saveData.call(self);
 
-				if(!saving && !!+self.params.autoSaveTime) {
-					var it = setTimeout(function() {
-						window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
-						clearTimeout(it);
-						saving = false;
-					}, self.params.autoSaveTime*1000);
+				if(_data.origin) {
+					var _count = stepCountMap[id] || 0;
+					_count++;
 
-					saving = true;
-				}
-
-				if(!isAutoSaveImage) {
-					stepCountMap[id] = stepCountMap[id] || 0;
-
-					if(_data.origin) {
-						stepCountMap[id]++;
-
-						if(stepCountMap[id]>=self.params.saveImgStep && dataMap[id].length>self.params.saveImgStep) {
-							stepCountMap[id] = 0;
-							data.saveAsImage.call(self, dataMap[id], self.container[id].type);
-						}
+					if(_count>=self.params.saveImgStep) {
+						stepCountMap[id] = 0;
+						data.saveAsImage.call(self, dataMap[id], self.container[id].type);
+					} else {
+						stepCountMap[id] = _count;
 					}
 				}
+			};
+
+			self.saveData = function() {
+				var self = this;
+				if(saving || "never"===self.params.autoSaveTime) return ;
+				self.params.autoSaveTime = isNaN(self.params.autoSaveTime)?10:+self.params.autoSaveTime;
+
+				var it = setTimeout(function() {
+					for(var key in pageMap) {
+						var page = pageMap[key];
+						dataMap[key].length = 0;
+						[].push.apply(dataMap[key], page.getData());
+					}
+
+					window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
+					clearTimeout(it);
+					saving = false;
+				}, self.params.autoSaveTime*1000);
+
+				saving = true;
 			};
 
 			self.remove = function(_id) {
@@ -858,6 +886,7 @@
 		}
 
 		var self = this,
+			stepCountMap = {},
 			currentPage = 1,
 			that = params.that,
 			_data = data.splitPage(params.data),
@@ -903,7 +932,7 @@
 					if(index<start) return ;
 					var flag = false;
 
-					if("image"===d.type) {
+					if("file"===d.type) {
 						flag = true;
 
 						data.render.call(that, d, function() {
@@ -942,7 +971,7 @@
 					ele.removeClass(nextPageBtn, "no");
 			}
 
-			!out && that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber);
+			!out && that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber, _data[pageNumber-1][0]);
 		};
 
 		this.next = function() {
@@ -952,14 +981,14 @@
 
 		this.show = function() {
 			pageWrap.innerHTML = "";
-			pageWrap.appendChild(pageEle);
+			_data.length>1 && pageWrap.appendChild(pageEle);
 			that.page = self;
 			this.go(currentPage);
 		};
 
 		this.hide = function() {
 			if(that.page!=self) return ;
-			pageWrap.removeChild(pageEle);
+			_data.length>1 && pageWrap.removeChild(pageEle);
 			delete that.page;
 		};
 
@@ -980,29 +1009,51 @@
 				_data[i] = [{
 					data: [d, 0, 0],
 					pageNumber: i+1,
-					width: 0,
-					height: 0,
+					width: that.params.width,
+					height: that.params.height,
 					status: 1,
-					type: "image",
+					type: "file",
 					from: params.from
 				}];
-
-				that.tab.push.call(that, tabId, _data[i][0]);
 			}
 		});
 
-		this.push = function(data, id) {
+		this.push = function(d) {
 			var activeTab = that.tab.getActive();
-			data.pageNumber = currentPage;
-			_data[currentPage-1].push(data);
-			that.tab.push.call(that, void(0)===id?activeTab.id:id, data);
+			d.pageNumber = currentPage;
+			_data[currentPage-1].push(d);
+			that.tab.saveData.call(that);
+
+			if("file"!=d.type && d.origin) {
+				var _count = stepCountMap[currentPage] || 0;
+				_count++;
+
+				if(_count>=that.params.saveImgStep) {
+					stepCountMap[currentPage] = 0;
+					data.saveAsImage.call(that, _data[currentPage-1], that.container[activeTab.id].type);
+				} else {
+					stepCountMap[currentPage] = _count;
+				}
+			}
+		};
+
+		this.getData = function() {
+			var i = 0, arr = [];
+
+			while(i<total) {
+				[].push.apply(arr, _data[i]);
+				i++;
+			}
+
+			return arr;
 		};
 
 		that.params.disable && this.disable();
+		that.tab.saveData.call(that);
 
 		if(show) {
 			pageWrap.innerHTML = "";
-			pageWrap.appendChild(pageEle);
+			_data.length>1 && pageWrap.appendChild(pageEle);
 			self.go(1);
 		}
 	}
@@ -1072,6 +1123,7 @@
 		var render = function(_data) {
 			var scaleWidth = null,
 				scaleHeight = null,
+				scaleArea = null,
 				activeTab = that.tab.getActive();
 
 			for(var key in _data) {
@@ -1082,6 +1134,7 @@
 				if(!scaleWidth || !scaleHeight) {
 					scaleWidth = that.mainCanvas.width/val.width;
 					scaleHeight = that.mainCanvas.height/val.height;
+					scaleArea = (that.mainCanvas.width*that.mainCanvas.height)/(val.width*val.height);
 				}
 
 				switch(val.type) {
@@ -1095,6 +1148,14 @@
 					break;
 					case "image":
 
+					break;
+					case "file":
+
+					break;
+					case "eraser":
+					val.data.x = val.data.x * scaleWidth;
+					val.data.y = val.data.y * scaleHeight;
+					val.data.size = val.data.size * scaleWidth;
 					break;
 					default:
 					if(val.data[0]) val.data[0] = !isNaN(val.data[0])?val.data[0] * scaleWidth:val.data[0];
@@ -1427,36 +1488,22 @@
 				isShow = params.isShow,
 				from = params.from,
 				tabId = params.tabId,
-				splitPage = "[object Array]"===toString.call(files) && files.length>1?true:false,
 				activeTab = self.tab.getActive();
+
+			files = "[object Array]"===toString.call(files)?files:[files];
 
 			var _showFiles = function() {
 				self.pad.clear();
 
-				if(splitPage) {
-					var pageObj = new Page({
-						data: files, 
-						show: isShow, 
-						that: self,
-						tabId: newTab?id:activeTab.id
-					});
+				var pageObj = new Page({
+					data: files, 
+					show: isShow, 
+					that: self,
+					tabId: newTab?id:activeTab.id
+				});
 
-					self.tab.setPage.call(self, void(0)!=id?id:activeTab.id, pageObj);
-					activeTab.page = pageObj;
-				} else {
-					var _data = {
-						data: [files, 0, 0],
-						width: 0,
-						height: 0,
-						status: 1,
-						type: "image",
-						origin: true,
-						from: from
-					};
-
-					data.render.call(self, _data);
-					self.tab.push.call(self, newTab?id:activeTab.id, _data);
-				}
+				self.tab.setPage.call(self, void(0)!=id?id:activeTab.id, pageObj);
+				activeTab.page = pageObj;
 			};
 
 			if(newTab) {
@@ -1466,6 +1513,7 @@
 				if(isShow) {
 					self.tab.active.call(self, id);
 					_showFiles();
+					self.params.onTabChange && self.params.onTabChange(id);
 				}
 			} else {
 				_showFiles();
