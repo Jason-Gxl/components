@@ -533,23 +533,33 @@
 			var cw = canvas.clientWidth, ch = canvas.clientHeight;
 
 			img.onload = function() {
-				var imgWidth = img.width, 
+				var imgWidth = img.width,
 					imgHeight = img.height,
-					dw = cw - img.width, 
-					dh = ch - img.height;
-
-				data.width = imgWidth;
-				data.height = imgHeight;
+					dw = cw - imgWidth, 
+					dh = ch - imgHeight;
 
 				if(dw>=0 && dh>=0) {
+					var x = dw/2, y = dh/2;
 					ctx.drawImage(img, dw/2, dh/2);
+					params.fileWidth = imgWidth;
+					params.fileHeight = imgHeight;
+					data[1] = x;
+					data[2] = y;
 				} else {
 					var cwhp = cw/ch, iwhp = img.width/img.height;
 
 					if(cwhp>iwhp) {
 						ctx.drawImage(img, (cw-ch*iwhp)/2, 0, ch*iwhp, ch);
+						params.fileWidth = ch*iwhp;
+						params.fileHeight = ch;
+						data[1] = (cw-ch*iwhp)/2;
+						data[2] = 0;
 					} else {
 						ctx.drawImage(img, 0, (ch-cw/iwhp)/2, cw, cw/iwhp);
+						params.fileWidth = cw;
+						params.fileHeight = cw/iwhp;
+						data[1] = 0;
+						data[2] = (ch-cw/iwhp)/2;
 					}
 				}
 
@@ -714,7 +724,6 @@
 					self.active.call(that, _id);
 				});
 
-				id++;
 				tabWrap.appendChild(li);
 
 				that.container[_id] = {
@@ -924,7 +933,7 @@
 			this.go(currentPage);
 		};
 
-		var render = function(pageNumber, start) {
+		var render = function(pageNumber, start, callback) {
 			var __data = _data[pageNumber-1];
 
 			if("[object Array]"===toString.call(__data)) {
@@ -936,16 +945,21 @@
 						flag = true;
 
 						data.render.call(that, d, function() {
-							render(pageNumber, ++index);
+							if(__data.length-1<=index) {
+								callback && callback();
+							} else {
+								render(pageNumber, ++index);
+							}
 						});
 					} else {
 						data.render.call(that, d);
+						__data.length-1<=index && callback && callback();
 					}
 
 					return flag;
 				});
 			} else {
-				data.render.call(that, __data);
+				data.render.call(that, __data, callback);
 			}
 		};
 
@@ -953,7 +967,11 @@
 			pageNumber = pageNumber<=1?1:pageNumber;
 			pageNumber = pageNumber>=total?total:pageNumber;
 			that.mainCanvas.width = that.mainCanvas.width;
-			render(pageNumber, 0);
+
+			render(pageNumber, 0, function() {
+				!out && that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber, _data[pageNumber-1][0]);
+			});
+
 			currentPage = pageNumber;
 			pageNumberInput.value = pageNumber;
 
@@ -970,8 +988,6 @@
 					ele.removeClass(prePageBtn, "no");
 					ele.removeClass(nextPageBtn, "no");
 			}
-
-			!out && that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber, _data[pageNumber-1][0]);
 		};
 
 		this.next = function() {
@@ -1488,6 +1504,7 @@
 				isShow = params.isShow,
 				from = params.from,
 				tabId = params.tabId,
+				tabName = params.tabName,
 				activeTab = self.tab.getActive();
 
 			files = "[object Array]"===toString.call(files)?files:[files];
@@ -1507,6 +1524,7 @@
 			};
 
 			if(newTab) {
+				var _tab = {id:tabId, name:tabName};
 				var id = self.tab.build.call(self, bufferCanvas4, 1, null, tabId, from===self.params.id);
 				params.tabId = id;
 

@@ -82,7 +82,8 @@ document.getElementById("show_btn").addEventListener("click", function() {
 		files: files,
 		newTab: true,
 		isShow: true,
-		from: 1
+		from: 1,
+		tabId: Date.now()
 	};
 
 	pad1.showFiles(data);
@@ -109,7 +110,7 @@ var pad1 = wPad.init({
 	},
 	onTabChange: function(id) {
 		console.log(1);
-		pad2.changeTab(id);
+		//pad2.changeTab(id);
 	},
 	onTabRemove: function(id) {
 		pad2.removeTab(id);
