@@ -29,14 +29,22 @@
 				var _data = [],
 					originX = self.current.points[0],
 					originY = self.current.points[1],
+					mode = modeMap[self.current.name],
 					xc = data.x - originX,
 					yc = data.y - originY;
 
 				_data.push((originX+data.x)/2);
 				_data.push((originY+data.y)/2);
-				_data.push(Math.abs(xc)>Math.abs(yc)?Math.abs(xc)/2:Math.abs(yc)/2);
+
+				if(0===mode || 1===mode) {
+					_data.push(Math.abs(xc)>Math.abs(yc)?Math.abs(xc)/2:Math.abs(yc)/2);
+				} else {
+					_data.push(Math.abs(xc)/2);
+					_data.push(Math.abs(yc)/2);
+				}
+				
 				self.current.interimBuffer.pop();
-				data = {type: "round", data: _data, status: 0, mode: modeMap[self.current.name], origin: true, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height};
+				data = {type: "round", data: _data, status: 0, mode: mode, origin: true, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height};
 				self.current.interimBuffer.push(data);
 				self.render(data);
 			}

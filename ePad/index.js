@@ -464,6 +464,22 @@
 			ctx.beginPath();
 			ctx.moveTo(data[0], data[1]);
 			ctx.lineTo(data[2], data[3]);
+
+			if(1===mode) {
+				var angle = Math.atan2(data[1]-data[3], data[0]-data[2])*180/Math.PI,
+					angle1 = (angle+30)*Math.PI/180,
+					angle2 = (angle-30)*Math.PI/180,
+					topx = 15*Math.cos(angle1),
+					topy = 15*Math.sin(angle1),
+					botx = 15*Math.cos(angle2),
+					boty = 15*Math.sin(angle2);
+
+				ctx.moveTo(topx+data[2], topy+data[3]);
+				ctx.lineTo(data[2], data[3]);
+				ctx.moveTo(botx+data[2], boty+data[3]);
+				ctx.lineTo(data[2], data[3]);
+			}
+
 			ctx.stroke();
 			ctx.save();
 			callback && callback();
@@ -481,6 +497,7 @@
 				self.bufferCanvas.width = self.bufferCanvas.width;
 			}
 			
+			ctx.save();
 			ctx.beginPath();
 
 			switch(mode) {
@@ -496,12 +513,29 @@
 				ctx.fill();
 				break;
 				case 2:
+				ctx.strokeStyle = params.color;
+				ctx.lineWidth = 1;
+				var r = data[2]>data[3]?data[2]:data[3],
+					scaleX = data[2]/r,
+					scaleY = data[3]/r;
+				ctx.scale(scaleX, scaleY);
+				ctx.arc(data[0]/scaleX, data[1]/scaleY, r, 0, 2*Math.PI);
+				ctx.closePath();
+				ctx.stroke();
 				break;
 				case 3:
+				ctx.fillStyle = params.color;
+				var r = data[2]>data[3]?data[2]:data[3],
+					scaleX = data[2]/r,
+					scaleY = data[3]/r;
+				ctx.scale(scaleX, scaleY);
+				ctx.arc(data[0]/scaleX, data[1]/scaleY, r, 0, 2*Math.PI);
+				ctx.closePath();
+				ctx.fill();
 				break;
 			}
 
-			ctx.save();
+			ctx.restore();
 			callback && callback();
 		},
 		renderText: function(params, callback, isCreateImage) {
@@ -855,6 +889,7 @@
 
 					if(activeObj.page) {
 						activeObj.page.hide();
+						delete pageMap[activeObj.id];
 						delete activeObj.page;
 					}
 				} else {
@@ -948,7 +983,7 @@
 							if(__data.length-1<=index) {
 								callback && callback();
 							} else {
-								render(pageNumber, ++index);
+								render(pageNumber, ++index, callback);
 							}
 						});
 					} else {
