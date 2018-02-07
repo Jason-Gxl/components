@@ -5,7 +5,13 @@
 		padMap = {},
 		padCount = 0,
 		padTab = [],
-		isMobile = /\bmobile\b/i.test(navigator.userAgent),
+		isMobile = /(\bmobile\b|\bandroid\b)/i.test(navigator.userAgent),
+		eventMap = {
+			click: isMobile?"touchend":"click",
+			down: isMobile?"touchstart":"mousedown",
+			move: isMobile?"touchmove":"mousemove",
+			up: isMobile?"touchend":"mouseup"
+		},
 		layoutClassMap = {
 			leftTop: "left-top",
 			rightTop: "right-top",
@@ -24,7 +30,7 @@
 			background: "#fff",
 			eraserSize: 5,
 			ferulaSize: 5,
-			toolbars: ["ferula", "pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear", "color"]
+			toolbars: isMobile?["pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear"]:["ferula", "pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear", "color"]
 			//toolbars: ["ferula", "ellipesstroke", "rectstroke", "pen", "eraser", "rect", "ellipes", "text", "line", "arrow", "color", "export", "scissors", "clear", "enlarge", "file", "handPad"]
 		},
 		childToolbars = {
@@ -177,7 +183,7 @@
 
 		return {
 			init: function(node, type, callback) {
-				ele.addEvent(node, "mousedown", function() {
+				ele.addEvent(node, eventMap["down"], function() {
 					var args = [].slice.call(arguments, 0),
 						e = args[0] || window.event,
 						start = 0===type?e.x:e.y,
@@ -187,10 +193,10 @@
 					moveEvent.node = this;
 					moveEvent.callback = callback;
 					moveEvent.dValue = start - (0===type?rect.x:rect.y);
-					ele.addEvent(document, "mousemove", moveEvent);
+					ele.addEvent(document, eventMap["move"], moveEvent);
 
-					ele.addEvent(document, "mouseup", function() {
-						ele.delEvent(document, "mousemove", moveEvent);
+					ele.addEvent(document, eventMap["up"], function() {
+						ele.delEvent(document, eventMap["move"], moveEvent);
 					});
 				});				
 			}
@@ -735,7 +741,7 @@
 				canvasMap[_id] = canvas;
 
 				if(del) {
-					ele.addEvent(li.getElementsByTagName("i")[0], "click", function() {
+					ele.addEvent(li.getElementsByTagName("i")[0], eventMap["click"], function() {
 						var args = [].slice.call(arguments, 0),
 						 	e = args[0] || window.event;
 						
@@ -752,7 +758,7 @@
 					});
 				}
 
-				ele.addEvent(li, "click", function() {
+				ele.addEvent(li, eventMap["click"], function() {
 					if(this===activeObj.tab) return ;
 					that.params.onTabChange && that.params.onTabChange(_id);
 					self.active.call(that, _id);
@@ -947,17 +953,17 @@
 			goPageBtn = pageEle.getElementsByClassName("go-page-btn")[0],
 			pageNumberInput = pageEle.getElementsByClassName("page-number-input")[0];
 
-		ele.addEvent(prePageBtn, "click", function() {
+		ele.addEvent(prePageBtn, eventMap["click"], function() {
 			if(that.params.disable || currentPage<=1) return ;
 			self.pre();
 		});
 
-		ele.addEvent(nextPageBtn, "click", function() {
+		ele.addEvent(nextPageBtn, eventMap["click"], function() {
 			if(that.params.disable || currentPage>=total) return ;
 			self.next();
 		});
 
-		ele.addEvent(goPageBtn, "click", function() {
+		ele.addEvent(goPageBtn, eventMap["click"], function() {
 			if(that.params.disable) return ;
 			var pageNumber = pageNumberInput.value;
 			self.go(pageNumber);
@@ -1610,7 +1616,7 @@
 			}
 		});
 
-		ele.addEvent(toolbarWrap, "click", function() {
+		ele.addEvent(toolbarWrap, eventMap["click"], function() {
 			if(params.disable) return ;
 
 			var args = [].slice.call(arguments, 0),
@@ -1697,14 +1703,17 @@
 			}
 		});
 
-		ele.addEvent(bufferCanvas1, "mousemove", function() {
+		ele.addEvent(bufferCanvas1, eventMap["move"], function() {
 			if(!current) return ;
 
 			var args = [].slice.call(arguments, 0),
 				e = args[0] || window.event,
 				rect = this.getBoundingClientRect(),
 				item = current.name.toLowerCase(),
-				pos = {x:e.clientX-(rect.x || rect.left), y:e.clientY- (rect.y || rect.top)};
+				pos = {
+					x: (isMobile?e.targetTouches[0].clientX:e.clientX) - (rect.x || rect.left), 
+					y: (isMobile?e.targetTouches[0].clientY:e.clientY) - (rect.y || rect.top)
+				};
 
 			if(handPad || active) {
 				switch(item) {
@@ -1730,12 +1739,15 @@
 			}
 		});
 
-		ele.addEvent(bufferCanvas1, "mousedown", function() {
+		ele.addEvent(bufferCanvas1, eventMap["down"], function() {
 			var args = [].slice.call(arguments, 0),
 				rect = this.getBoundingClientRect(),
 				lastSpan = toolbarWrap.getElementsByClassName("selected-item")[0],
 				e = args[0] || window.event,
-				pos = {x:e.clientX-(rect.x || rect.left), y:e.clientY- (rect.y || rect.top)};
+				pos = {
+					x: (isMobile?e.targetTouches[0].clientX:e.clientX) - (rect.x || rect.left), 
+					y: (isMobile?e.targetTouches[0].clientY:e.clientY) - (rect.y || rect.top)
+				};
 
 			active = true;
 			ele.removeClass(lastSpan, "selected-item");
@@ -1750,7 +1762,7 @@
 			}
 		});
 
-		ele.addEvent(document, "mousedown", function() {
+		ele.addEvent(document, eventMap["down"], function() {
 			var lastSpan = toolbarWrap.getElementsByClassName("selected-item")[0];
 			ele.removeClass(lastSpan, "selected-item");
 			self.textInput.removeAttribute("style");
@@ -1763,7 +1775,7 @@
 			}
 		});
 
-		ele.addEvent(bufferCanvas1, "mouseup", function() {
+		ele.addEvent(bufferCanvas1, eventMap["up"], function() {
 			var args = [].slice.call(arguments, 0),
 				e = args[0] || window.event;
 			active = false;
