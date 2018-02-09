@@ -6,11 +6,13 @@
 		padCount = 0,
 		padTab = [],
 		isMobile = /(\bmobile\b|\bandroid\b)/i.test(navigator.userAgent),
+		isFireFox = /\bfirefox\b/i.test(navigator.userAgent),
 		eventMap = {
 			click: isMobile?"touchend":"click",
 			down: isMobile?"touchstart":"mousedown",
 			move: isMobile?"touchmove":"mousemove",
-			up: isMobile?"touchend":"mouseup"
+			up: isMobile?"touchend":"mouseup",
+			wheel: isFireFox?"DOMMouseScroll":"mousewheel"
 		},
 		layoutClassMap = {
 			leftTop: "left-top",
@@ -208,6 +210,45 @@
 			var len = 20, str = ""
 			for(;str.length<len;str+=Math.random().toString().substr(2));
 			return str.substr(0, len);
+		},
+		scale: function(_data) {
+			var that = this,
+				val = _data,
+				type = val.type,
+				scaleWidth = null,
+				scaleHeight = null;
+
+			if(!scaleWidth || !scaleHeight) {
+				scaleWidth = that.mainCanvas.width/val.width;
+				scaleHeight = that.mainCanvas.height/val.height;
+			}
+
+			switch(type) {
+				case "pen":
+				val.data.x = val.data.x * scaleWidth;
+				val.data.y = val.data.y * scaleHeight;
+				break;
+				case "text":
+				val.data[0] = val.data[0] * scaleWidth;
+				val.data[1] = val.data[1] * scaleWidth;
+				break;
+				case "image":
+
+				break;
+				case "file":
+
+				break;
+				case "eraser":
+				val.data.x = val.data.x * scaleWidth;
+				val.data.y = val.data.y * scaleHeight;
+				val.data.size = val.data.size * scaleWidth;
+				break;
+				default:
+				if(val.data[0]) val.data[0] = !isNaN(val.data[0])?val.data[0] * scaleWidth:val.data[0];
+				if(val.data[1]) val.data[1] = !isNaN(val.data[1])?val.data[1] * scaleWidth:val.data[1];
+				if(val.data[2]) val.data[2] = !isNaN(val.data[2])?val.data[2] * scaleWidth:val.data[2];
+				if(val.data[3]) val.data[3] = !isNaN(val.data[3])?val.data[3] * scaleWidth:val.data[3];
+			}
 		},
 		copy: function() {
 			var args = [].slice.call(arguments, 0),
@@ -415,6 +456,8 @@
 			ctx.strokeStyle = params.color;
 			ctx.lineWidth = 1;
 
+			0!=params.status && params.origin && ctx.save();
+
 			if(params.origin) {
 				ctx.beginPath();
 				ctx.moveTo(data.x, data.y);
@@ -424,7 +467,7 @@
 			}
 
 			if(0!=params.status && params.origin) self.bufferCanvas.width = self.bufferCanvas.width;
-			ctx.save();
+			0!=params.status && params.end && ctx.restore();
 			callback && callback();
 		},
 		renderRect: function(params, callback, isCreateImage) {
@@ -440,6 +483,8 @@
 				self.bufferCanvas.width = self.bufferCanvas.width;
 			}
 
+			ctx.save();
+
 			if(0===params.mode) {
 				ctx.strokeStyle = params.color;
 				ctx.lineWidth = 1;
@@ -449,7 +494,7 @@
 				ctx.fillRect(data[0], data[1], data[2], data[3]);
 			}
 
-			ctx.save();
+			ctx.restore();
 			callback && callback();
 		},
 		renderLine: function(params, callback, isCreateImage) {
@@ -467,6 +512,7 @@
 
 			ctx.strokeStyle = params.color;
 			ctx.lineWidth = 1;
+			ctx.save();
 			ctx.beginPath();
 			ctx.moveTo(data[0], data[1]);
 			ctx.lineTo(data[2], data[3]);
@@ -487,7 +533,7 @@
 			}
 
 			ctx.stroke();
-			ctx.save();
+			ctx.restore();
 			callback && callback();
 		},
 		renderRound: function(params, callback, isCreateImage) {
@@ -502,9 +548,8 @@
 			} else {
 				self.bufferCanvas.width = self.bufferCanvas.width;
 			}
-			
+
 			ctx.save();
-			ctx.beginPath();
 
 			switch(mode) {
 				case 0:
@@ -556,10 +601,10 @@
 				self.bufferCanvas.width = self.bufferCanvas.width;
 			}
 			
-			ctx.beginPath();
 			ctx.fillStyle = params.color;
-			ctx.fillText(data[2], data[0], data[1]);
 			ctx.save();
+			ctx.fillText(data[2], data[0], data[1]);
+			ctx.restore();
 			callback && callback();
 		},
 		renderImage: function(params, callback, isCreateImage) {
@@ -577,6 +622,8 @@
 					imgHeight = img.height,
 					dw = cw - imgWidth, 
 					dh = ch - imgHeight;
+
+				ctx.save();
 
 				if(dw>=0 && dh>=0) {
 					var x = dw/2, y = dh/2;
@@ -603,7 +650,7 @@
 					}
 				}
 
-				ctx.save();
+				ctx.restore();
 				callback && callback();
 			};
 		},
@@ -625,6 +672,8 @@
 				ctx.lineJoin = "bevel";
 			}
 
+			ctx.save();
+
 			if(params.origin) {
 				ctx.beginPath();
 				ctx.moveTo(data.x, data.y);
@@ -635,7 +684,7 @@
 			}
 
 			ctx.stroke();
-			ctx.save();
+			ctx.restore();
 			callback && callback();
 		},
 		render: function(_data, callback, isCreateImage) {
@@ -782,7 +831,7 @@
 				dataMap[id].push(_data);
 				self.tab.saveData.call(self);
 
-				if(_data.origin) {
+				/*if(_data.origin) {
 					var _count = stepCountMap[id] || 0;
 					_count++;
 
@@ -792,7 +841,7 @@
 					} else {
 						stepCountMap[id] = _count;
 					}
-				}
+				}*/
 			};
 
 			self.saveData = function() {
@@ -864,16 +913,22 @@
 					activeObj.canvas.width = activeObj.canvas.width;
 					var i = 0, len = _data.length;
 
-					var next = function() {
-						var d = _data[i];
+					if(len) {
+						var next = function() {
+							var d = _data[i];
 
-						d && data.render.call(self, d, function() {
-							i++;
-							i<len && next();
-						});
-					};
+							if(d) {
+								data.scale.call(self, d);
 
-					next();
+								data.render.call(self, d, function() {
+									i++;
+									i<len && next();
+								});
+							}
+						};
+
+						next();
+					}
 				}
 			};
 
@@ -1081,7 +1136,7 @@
 			_data[currentPage-1].push(d);
 			that.tab.saveData.call(that);
 
-			if("file"!=d.type && d.origin) {
+			/*if("file"!=d.type && d.origin) {
 				var _count = stepCountMap[currentPage] || 0;
 				_count++;
 
@@ -1091,7 +1146,7 @@
 				} else {
 					stepCountMap[currentPage] = _count;
 				}
-			}
+			}*/
 		};
 
 		this.getData = function() {
@@ -1178,48 +1233,12 @@
 		buildPad.call(that);
 
 		var render = function(_data) {
-			var scaleWidth = null,
-				scaleHeight = null,
-				scaleArea = null,
-				activeTab = that.tab.getActive();
+			var activeTab = that.tab.getActive();
 
 			for(var key in _data) {
 				var val = _data[key],
 					type = val.type,
 					val = val.data;
-
-				if(!scaleWidth || !scaleHeight) {
-					scaleWidth = that.mainCanvas.width/val.width;
-					scaleHeight = that.mainCanvas.height/val.height;
-					scaleArea = (that.mainCanvas.width*that.mainCanvas.height)/(val.width*val.height);
-				}
-
-				switch(val.type) {
-					case "pen":
-					val.data.x = val.data.x * scaleWidth;
-					val.data.y = val.data.y * scaleHeight;
-					break;
-					case "text":
-					val.data[0] = val.data[0] * scaleWidth;
-					val.data[1] = val.data[1] * scaleWidth;
-					break;
-					case "image":
-
-					break;
-					case "file":
-
-					break;
-					case "eraser":
-					val.data.x = val.data.x * scaleWidth;
-					val.data.y = val.data.y * scaleHeight;
-					val.data.size = val.data.size * scaleWidth;
-					break;
-					default:
-					if(val.data[0]) val.data[0] = !isNaN(val.data[0])?val.data[0] * scaleWidth:val.data[0];
-					if(val.data[1]) val.data[1] = !isNaN(val.data[1])?val.data[1] * scaleWidth:val.data[1];
-					if(val.data[2]) val.data[2] = !isNaN(val.data[2])?val.data[2] * scaleWidth:val.data[2];
-					if(val.data[3]) val.data[3] = !isNaN(val.data[3])?val.data[3] * scaleWidth:val.data[3];
-				}
 
 				if(key==activeTab.id) {
 					data.render.call(that, val);
@@ -1237,7 +1256,7 @@
 							var page = that.tab.getPage(key);
 
 							if(page) {
-								page.push.call(taht, val, key);
+								page.push.call(that, val, key);
 							} else {
 								that.tab.push.call(that, key, val);
 							}
@@ -1281,6 +1300,10 @@
 				return ;
 			}
 
+			for(var id in _data) {
+				data.scale.call(that, _data[id].data);
+			}
+			
 			render(_data);
 		};
 
@@ -1502,12 +1525,20 @@
 			resizePad();
 		});
 
-		ele.addEvent(canvasWrap, "mousewheel", function() {
+		ele.addEvent(canvasWrap, eventMap["wheel"], function() {
 			var args = [].slice.call(arguments, 0),
 				e = args[0] || window.event;
 
 			canvasWrap.scrollTop = canvasWrap.scrollTop + e.deltaY;
 			scrollY.style.top = (scrollWrapY.clientHeight - scrollY.offsetHeight)*(canvasWrap.scrollTop/(canvasWrap.scrollHeight - canvasWrap.clientHeight)) + "px";
+
+			if(window.event) {
+				e.returnValue = false;
+				e.cancelBubble = true;
+			} else {
+				e.preventDefault();
+				e.stopPropagation();
+			}
 		});
 
 		scroll.init(scrollX, 0, function(val) {
