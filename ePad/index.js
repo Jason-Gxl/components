@@ -455,8 +455,8 @@
 			
 			ctx.strokeStyle = params.color;
 			ctx.lineWidth = 1;
-
 			0!=params.status && params.origin && ctx.save();
+			params.origin && ctx.scale(self.params.width/params.width, self.params.height/params.height);
 
 			if(params.origin) {
 				ctx.beginPath();
@@ -484,6 +484,8 @@
 			}
 
 			ctx.save();
+			ctx.scale(self.params.width/params.width, self.params.height/params.height);
+			ctx.beginPath();
 
 			if(0===params.mode) {
 				ctx.strokeStyle = params.color;
@@ -513,6 +515,7 @@
 			ctx.strokeStyle = params.color;
 			ctx.lineWidth = 1;
 			ctx.save();
+			ctx.scale(self.params.width/params.width, self.params.height/params.height);
 			ctx.beginPath();
 			ctx.moveTo(data[0], data[1]);
 			ctx.lineTo(data[2], data[3]);
@@ -541,6 +544,9 @@
 				mode = params.mode,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				scale = wScale<hScale?wScale:hScale,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -550,6 +556,8 @@
 			}
 
 			ctx.save();
+			ctx.scale(scale, scale);
+			ctx.beginPath();
 
 			switch(mode) {
 				case 0:
@@ -603,6 +611,8 @@
 			
 			ctx.fillStyle = params.color;
 			ctx.save();
+			ctx.scale(self.params.width/params.width, self.params.height/params.height);
+			ctx.beginPath();
 			ctx.fillText(data[2], data[0], data[1]);
 			ctx.restore();
 			callback && callback();
@@ -672,9 +682,9 @@
 				ctx.lineJoin = "bevel";
 			}
 
-			ctx.save();
-
 			if(params.origin) {
+				ctx.save();
+				ctx.scale(self.params.width/params.width, self.params.height/params.height);
 				ctx.beginPath();
 				ctx.moveTo(data.x, data.y);
 				ctx.lineTo(data.x, data.y);
@@ -684,7 +694,7 @@
 			}
 
 			ctx.stroke();
-			ctx.restore();
+			0!=params.status && params.end && ctx.restore();
 			callback && callback();
 		},
 		render: function(_data, callback, isCreateImage) {
@@ -724,9 +734,13 @@
 				canvas = self.mouseIconCanvas,
 				data = params.data,
 				mode = params.mode,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				scale = wScale<hScale?wScale:hScale,
 				ctx = canvas.getContext("2d");
 
 			canvas.width = canvas.width;
+			ctx.scale(scale, scale);
 			ctx.beginPath();
 
 			if(0===mode) {
@@ -744,9 +758,13 @@
 				canvas = self.mouseIconCanvas,
 				data = params.data,
 				ferulaSize = self.params.ferulaSize,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				scale = wScale<hScale?wScale:hScale,
 				ctx = canvas.getContext("2d");
 
 			canvas.width = canvas.width;
+			ctx.scale(scale, scale);
 			ctx.beginPath();
 			ctx.fillStyle = "red";
 			ctx.arc(data[0], data[1], ferulaSize, 0, 2*Math.PI);
@@ -831,7 +849,7 @@
 				dataMap[id].push(_data);
 				self.tab.saveData.call(self);
 
-				/*if(_data.origin) {
+				if(_data.origin) {
 					var _count = stepCountMap[id] || 0;
 					_count++;
 
@@ -841,7 +859,7 @@
 					} else {
 						stepCountMap[id] = _count;
 					}
-				}*/
+				}
 			};
 
 			self.saveData = function() {
@@ -917,14 +935,10 @@
 						var next = function() {
 							var d = _data[i];
 
-							if(d) {
-								data.scale.call(self, d);
-
-								data.render.call(self, d, function() {
-									i++;
-									i<len && next();
-								});
-							}
+							d && data.render.call(self, d, function() {
+								i++;
+								i<len && next();
+							});
 						};
 
 						next();
@@ -1136,7 +1150,7 @@
 			_data[currentPage-1].push(d);
 			that.tab.saveData.call(that);
 
-			/*if("file"!=d.type && d.origin) {
+			if("file"!=d.type && d.origin) {
 				var _count = stepCountMap[currentPage] || 0;
 				_count++;
 
@@ -1146,7 +1160,7 @@
 				} else {
 					stepCountMap[currentPage] = _count;
 				}
-			}*/
+			}
 		};
 
 		this.getData = function() {
@@ -1276,20 +1290,6 @@
 				var val = _data[key],
 					type = val.type,
 					val = val.data;
-
-				if(!scaleWidth || !scaleHeight) {
-					scaleWidth = that.mainCanvas.width/val.width;
-					scaleHeight = that.mainCanvas.height/val.height;
-				}
-
-				switch(val.type) {
-					default:
-					if(val.data[0]) val.data[0] = !isNaN(val.data[0])?val.data[0] * scaleWidth:val.data[0];
-					if(val.data[1]) val.data[1] = !isNaN(val.data[1])?val.data[1] * scaleWidth:val.data[1];
-					if(val.data[2]) val.data[2] = !isNaN(val.data[2])?val.data[2] * scaleWidth:val.data[2];
-					if(val.data[3]) val.data[3] = !isNaN(val.data[3])?val.data[3] * scaleWidth:val.data[3];
-				}
-
 				mouse.render.call(that, val);
 			}
 		};
@@ -1298,10 +1298,6 @@
 			if("[object Object]"!=toString.call(_data)) {
 				console.error("TypeError: data must be Object");
 				return ;
-			}
-
-			for(var id in _data) {
-				data.scale.call(that, _data[id].data);
 			}
 			
 			render(_data);
@@ -1470,10 +1466,9 @@
 		bufferCanvas3 = wrap.getElementsByClassName("buffer-can-3")[0];
 		bufferCanvas4 = wrap.getElementsByClassName("buffer-can-4")[0];
 
-		if("100%"===params.size) {
-			var canvasWrapWidth = canvasWrap.clientWidth, 
-				canvasWrapHeight = canvasWrap.clientHeight;
-		} else {
+		var resizePad = null;
+
+		if(params.size && /\*/.test(params.size)) {
 			var sizeArr = params.size.split(/\*/);
 
 			if(2!=sizeArr.length) {
@@ -1483,6 +1478,88 @@
 				var canvasWrapWidth = isNaN(sizeArr[0])?canvasWrap.clientWidth:sizeArr[0],
 					canvasWrapHeight = isNaN(sizeArr[1])?canvasWrap.clientHeight:sizeArr[1];
 			}
+
+			ele.addEvent(canvasWrap, eventMap["wheel"], function() {
+				var args = [].slice.call(arguments, 0),
+					e = args[0] || window.event;
+
+				canvasWrap.scrollTop = canvasWrap.scrollTop + e.deltaY;
+				scrollY.style.top = (scrollWrapY.clientHeight - scrollY.offsetHeight)*(canvasWrap.scrollTop/(canvasWrap.scrollHeight - canvasWrap.clientHeight)) + "px";
+
+				if(window.event) {
+					e.returnValue = false;
+					e.cancelBubble = true;
+				} else {
+					e.preventDefault();
+					e.stopPropagation();
+				}
+			});
+
+			scroll.init(scrollX, 0, function(val) {
+				var rect = scrollWrapX.getBoundingClientRect(),
+					moveDest = rect.width - scrollX.offsetWidth,
+					hideWidth = canvasWrap.scrollWidth - canvasWrap.offsetWidth;
+
+				canvasWrap.scrollLeft = val*(hideWidth/moveDest);
+			});
+
+			scroll.init(scrollY, 1, function(val) {
+				var rect = scrollWrapY.getBoundingClientRect(),
+					moveDest = rect.height - scrollY.offsetHeight,
+					hideHeight = canvasWrap.scrollHeight - canvasWrap.offsetHeight;
+
+				canvasWrap.scrollTop = val*(hideHeight/moveDest);
+			});
+
+			resizePad = function() {
+				var canvasWrapWidth = canvasWrap.clientWidth,
+					canvasWrapHeight = canvasWrap.clientHeight;
+
+				if(canvasWrapWidth<params.width) {
+					ele.removeClass(scrollWrapX, "pad-hide");
+					var scrollWidth = canvasWrapWidth - (params.width - canvasWrapWidth);
+					scrollWidth = scrollWidth<10?10:scrollWidth;
+					scrollX.style.width = scrollWidth + "px";
+				} else {
+					ele.addClass(scrollWrapX, "pad-hide");
+				}
+
+				if(canvasWrapHeight<params.height) {
+					ele.removeClass(scrollWrapY, "pad-hide");
+					var scrollHeight = canvasWrapHeight - (params.height - canvasWrapHeight);
+					scrollHeight = scrollHeight<10?10:scrollHeight;
+					scrollY.style.height = scrollHeight + "px";
+				} else {
+					ele.addClass(scrollWrapY, "pad-hide");
+				}
+			};
+
+			resizePad();
+		} else {
+			var canvasWrapWidth = canvasWrap.clientWidth, 
+				canvasWrapHeight = canvasWrap.clientHeight;
+
+			resizePad = function() {
+				var canvasWrapWidth = canvasWrap.clientWidth, 
+					canvasWrapHeight = canvasWrap.clientHeight;
+
+				if(canvasWrapWidth!=params.width || canvasWrapHeight!=params.height) {
+					params.width = canvasWrapWidth;
+					params.height = canvasWrapHeight;
+					mainCanvas.width = canvasWrapWidth;
+					mainCanvas.height = canvasWrapHeight;
+					bufferCanvas1.width = canvasWrapWidth;
+					bufferCanvas1.height = canvasWrapHeight;
+					bufferCanvas2.width = canvasWrapWidth;
+					bufferCanvas2.height = canvasWrapHeight;
+					bufferCanvas3.width = canvasWrapWidth;
+					bufferCanvas3.height = canvasWrapHeight;
+					bufferCanvas4.width = canvasWrapWidth;
+					bufferCanvas4.height = canvasWrapHeight;
+
+					self.tab.active.call(self, self.tab.getActive().id);
+				}
+			};
 		}
 		
 		mainCanvas.width = canvasWrapWidth;
@@ -1498,66 +1575,10 @@
 		params.width = canvasWrapWidth;
 		params.height = canvasWrapHeight;
 
-		var resizePad = function() {
-			var canvasWrapWidth = canvasWrap.clientWidth,
-				canvasWrapHeight = canvasWrap.clientHeight;
-
-			if(canvasWrapWidth<params.width) {
-				ele.removeClass(scrollWrapX, "pad-hide");
-				var scrollWidth = canvasWrapWidth - (params.width - canvasWrapWidth);
-				scrollWidth = scrollWidth<10?10:scrollWidth;
-				scrollX.style.width = scrollWidth + "px";
-			} else {
-				ele.addClass(scrollWrapX, "pad-hide");
-			}
-
-			if(canvasWrapHeight<params.height) {
-				ele.removeClass(scrollWrapY, "pad-hide");
-				var scrollHeight = canvasWrapHeight - (params.height - canvasWrapHeight);
-				scrollHeight = scrollHeight<10?10:scrollHeight;
-				scrollY.style.height = scrollHeight + "px";
-			} else {
-				ele.addClass(scrollWrapY, "pad-hide");
-			}
-		};
-		
 		ele.addEvent(window, "resize", function() {
 			resizePad();
 		});
 
-		ele.addEvent(canvasWrap, eventMap["wheel"], function() {
-			var args = [].slice.call(arguments, 0),
-				e = args[0] || window.event;
-
-			canvasWrap.scrollTop = canvasWrap.scrollTop + e.deltaY;
-			scrollY.style.top = (scrollWrapY.clientHeight - scrollY.offsetHeight)*(canvasWrap.scrollTop/(canvasWrap.scrollHeight - canvasWrap.clientHeight)) + "px";
-
-			if(window.event) {
-				e.returnValue = false;
-				e.cancelBubble = true;
-			} else {
-				e.preventDefault();
-				e.stopPropagation();
-			}
-		});
-
-		scroll.init(scrollX, 0, function(val) {
-			var rect = scrollWrapX.getBoundingClientRect(),
-				moveDest = rect.width - scrollX.offsetWidth,
-				hideWidth = canvasWrap.scrollWidth - canvasWrap.offsetWidth;
-
-			canvasWrap.scrollLeft = val*(hideWidth/moveDest);
-		});
-
-		scroll.init(scrollY, 1, function(val) {
-			var rect = scrollWrapY.getBoundingClientRect(),
-				moveDest = rect.height - scrollY.offsetHeight,
-				hideHeight = canvasWrap.scrollHeight - canvasWrap.offsetHeight;
-
-			canvasWrap.scrollTop = val*(hideHeight/moveDest);
-		});
-
-		resizePad();
 		self.tab = new Tab(params.wrap);
 		self.textInput = textInput;
 		self.mouseIconCanvas = bufferCanvas1;

@@ -54,6 +54,7 @@
 
 			do {
 				data.status = 1;
+				data.end = (0===self.current.interimBuffer.length);
 				self.current.buffer.push(data);
 				self.render(data);
 				data = self.current.interimBuffer.shift();
