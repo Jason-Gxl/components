@@ -171,11 +171,11 @@
 				rect = node.offsetParent.getBoundingClientRect();
 
 			if(0===type) {
-				var val = e.x - moveEvent.dValue - rect.x;
+				var val = e.x - moveEvent.dValue - (rect.x || rect.left);
 				val = 0>val?0:(val + node.offsetWidth>rect.width?rect.width-node.offsetWidth:val);
 				node.style.left = val + "px";
 			} else {
-				var val = e.y - moveEvent.dValue - rect.y;
+				var val = e.y - moveEvent.dValue - (rect.y || rect.top);
 				val = 0>val?0:(val + node.offsetHeight>rect.height?rect.height-node.offsetHeight:val);
 				node.style.top = val + "px";
 			}
@@ -194,7 +194,7 @@
 					moveEvent.type = type;
 					moveEvent.node = this;
 					moveEvent.callback = callback;
-					moveEvent.dValue = start - (0===type?rect.x:rect.y);
+					moveEvent.dValue = start - (0===type?(rect.x || rect.left):(rect.y || rect.top));
 					ele.addEvent(document, eventMap["move"], moveEvent);
 
 					ele.addEvent(document, eventMap["up"], function() {
@@ -451,12 +451,14 @@
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
 				ctx = canvas.getContext("2d");
 			
 			ctx.strokeStyle = params.color;
 			ctx.lineWidth = 1;
 			0!=params.status && params.origin && ctx.save();
-			params.origin && ctx.scale(self.params.width/params.width, self.params.height/params.height);
+			params.origin && ctx.scale(wScale, hScale);
 
 			if(params.origin) {
 				ctx.beginPath();
@@ -475,6 +477,8 @@
 				mode = params.mode,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -484,7 +488,7 @@
 			}
 
 			ctx.save();
-			ctx.scale(self.params.width/params.width, self.params.height/params.height);
+			ctx.scale(wScale, hScale);
 			ctx.beginPath();
 
 			if(0===params.mode) {
@@ -504,6 +508,8 @@
 				mode = params.mode,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -515,7 +521,7 @@
 			ctx.strokeStyle = params.color;
 			ctx.lineWidth = 1;
 			ctx.save();
-			ctx.scale(self.params.width/params.width, self.params.height/params.height);
+			ctx.scale(wScale, hScale);
 			ctx.beginPath();
 			ctx.moveTo(data[0], data[1]);
 			ctx.lineTo(data[2], data[3]);
@@ -546,7 +552,6 @@
 				data = params.data,
 				wScale = self.params.width/params.width,
 				hScale = self.params.height/params.height,
-				scale = wScale<hScale?wScale:hScale,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -556,7 +561,7 @@
 			}
 
 			ctx.save();
-			ctx.scale(scale, scale);
+			ctx.scale(wScale, hScale);
 			ctx.beginPath();
 
 			switch(mode) {
@@ -601,6 +606,8 @@
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -611,7 +618,7 @@
 			
 			ctx.fillStyle = params.color;
 			ctx.save();
-			ctx.scale(self.params.width/params.width, self.params.height/params.height);
+			ctx.scale(wScale, hScale);
 			ctx.beginPath();
 			ctx.fillText(data[2], data[0], data[1]);
 			ctx.restore();
@@ -668,6 +675,9 @@
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				scale = wScale<hScale?wScale:hScale,
 				ctx = canvas.getContext("2d");
 			
 			ctx.strokeStyle = self.params.background;
@@ -684,7 +694,7 @@
 
 			if(params.origin) {
 				ctx.save();
-				ctx.scale(self.params.width/params.width, self.params.height/params.height);
+				ctx.scale(scale, scale);
 				ctx.beginPath();
 				ctx.moveTo(data.x, data.y);
 				ctx.lineTo(data.x, data.y);
@@ -1200,7 +1210,19 @@
 			container: {},
 			id: params.id || padCount++,
 			render: function(_data) {
-				data.render.call(that, _data);
+				data.render.call(that, _data, function() {
+					if(params.onRender) {
+						var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
+
+						obj[activeTab.id] = {
+							data: outData,
+							type: activeTab.type,
+							splitPage: activeTab.page?1:0
+						};
+
+						params.onRender(obj);
+					}
+				});
 				_data.width = that.mainCanvas.width;
 				_data.height = that.mainCanvas.height;
 
@@ -1212,18 +1234,6 @@
 					} else {
 						that.tab.push.call(that, activeTab.id, _data);
 					}
-				}
-
-				if(params.onRender) {
-					var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
-
-					obj[activeTab.id] = {
-						data: outData,
-						type: activeTab.type,
-						splitPage: activeTab.page?1:0
-					};
-
-					params.onRender(obj);
 				}
 			},
 			mouseRender: function(_data) {
@@ -1466,10 +1476,11 @@
 		bufferCanvas3 = wrap.getElementsByClassName("buffer-can-3")[0];
 		bufferCanvas4 = wrap.getElementsByClassName("buffer-can-4")[0];
 
-		var resizePad = null;
+		var resizePad = null, isFixedSize = false;
 
 		if(params.size && /\*/.test(params.size)) {
 			var sizeArr = params.size.split(/\*/);
+			isFixedSize = true;
 
 			if(2!=sizeArr.length) {
 				var canvasWrapWidth = canvasWrap.clientWidth, 
@@ -1483,7 +1494,7 @@
 				var args = [].slice.call(arguments, 0),
 					e = args[0] || window.event;
 
-				canvasWrap.scrollTop = canvasWrap.scrollTop + e.deltaY;
+				canvasWrap.scrollTop = canvasWrap.scrollTop + ("DOMMouseScroll"===e.type?(3===e.detail?100:-100):(e.deltaY));
 				scrollY.style.top = (scrollWrapY.clientHeight - scrollY.offsetHeight)*(canvasWrap.scrollTop/(canvasWrap.scrollHeight - canvasWrap.clientHeight)) + "px";
 
 				if(window.event) {
@@ -1533,8 +1544,6 @@
 					ele.addClass(scrollWrapY, "pad-hide");
 				}
 			};
-
-			resizePad();
 		} else {
 			var canvasWrapWidth = canvasWrap.clientWidth, 
 				canvasWrapHeight = canvasWrap.clientHeight;
@@ -1574,6 +1583,7 @@
 		bufferCanvas4.height = canvasWrapHeight;
 		params.width = canvasWrapWidth;
 		params.height = canvasWrapHeight;
+		isFixedSize && resizePad();
 
 		ele.addEvent(window, "resize", function() {
 			resizePad();
