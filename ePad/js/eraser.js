@@ -40,11 +40,12 @@
 			pos.data[2] = self.params.eraserSize;
 			self.mouseRender.call(self, pos);
 		},
-		bufferRender: function(data, origin) {
-			if(!data) return ;
-			var self = this;
-			data.size = self.params.eraserSize;
-			data = {type: "eraser", data: data, status: 0, origin: !!origin, mode: modeMap[self.current.name], from: self.params.id, width: self.params.width, height: self.params.height};
+		bufferRender: function(_data, origin) {
+			if(!_data) return ;
+			var self = this,
+				data = !!origin?{type: "eraser", data: [], status: 0, origin: !!origin, mode: modeMap[self.current.name], from: self.params.id, width: self.params.width, height: self.params.height}:self.current.interimBuffer.pop();
+			_data.size = self.params.eraserSize;
+			data.data.push(_data);
 			self.current.interimBuffer.push(data);
 			self.render(data);
 		},
@@ -54,7 +55,6 @@
 
 			do {
 				data.status = 1;
-				data.end = (0===self.current.interimBuffer.length);
 				self.current.buffer.push(data);
 				self.render(data);
 				data = self.current.interimBuffer.shift();

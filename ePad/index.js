@@ -365,8 +365,8 @@
 				createImageCanvas.width = createImageCanvas.width;
 
 				var _data_ = {
-					data: [imgData, 0, 0],
 					type: "image",
+					data: [imgData, 0, 0],
 					width: 0,
 					height: 0,
 					status: 1, 
@@ -453,22 +453,29 @@
 				wScale = self.params.width/params.width,
 				hScale = self.params.height/params.height,
 				ctx = canvas.getContext("2d");
+
+			if(0===params.status) {
+				canvas.width = canvas.width;
+			} else {
+				self.bufferCanvas.width = self.bufferCanvas.width;
+			}
 			
 			ctx.strokeStyle = params.color;
 			ctx.lineWidth = 1;
-			0!=params.status && params.origin && ctx.save();
-			params.origin && ctx.scale(wScale, hScale);
+			ctx.save();
+			ctx.scale(wScale, hScale);
 
-			if(params.origin) {
-				ctx.beginPath();
-				ctx.moveTo(data.x, data.y);
-			} else {
-				ctx.lineTo(data.x, data.y);
-				ctx.stroke();
-			}
+			data.forEach(function(point, index) {
+				if(0===index) {
+					ctx.beginPath();
+					ctx.moveTo(point.x, point.y);
+				} else {
+					ctx.lineTo(point.x, point.y);
+				}
+			});
 
-			if(0!=params.status && params.origin) self.bufferCanvas.width = self.bufferCanvas.width;
-			0!=params.status && params.end && ctx.restore();
+			ctx.stroke();
+			ctx.restore();
 			callback && callback();
 		},
 		renderRect: function(params, callback, isCreateImage) {
@@ -678,9 +685,14 @@
 				hScale = self.params.height/params.height,
 				scale = wScale<hScale?wScale:hScale,
 				ctx = canvas.getContext("2d");
+
+			if(0===params.status) {
+				canvas.width = canvas.width;
+			} else {
+				self.bufferCanvas.width = self.bufferCanvas.width;
+			}
 			
 			ctx.strokeStyle = self.params.background;
-			ctx.lineWidth = data.size;
 			ctx.fillStyle = self.params.background;
 
 			if(0===params.mode) {
@@ -691,19 +703,22 @@
 				ctx.lineJoin = "bevel";
 			}
 
-			if(params.origin) {
-				ctx.save();
-				ctx.scale(scale, scale);
-				ctx.beginPath();
-				ctx.moveTo(data.x, data.y);
-				ctx.lineTo(data.x, data.y);
-				if(0!=params.status) self.bufferCanvas.width = self.bufferCanvas.width;
-			} else {
-				ctx.lineTo(data.x, data.y);
-			}
+			ctx.save();
+			ctx.scale(scale, scale);
+
+			data.forEach(function(point, index) {
+				ctx.lineWidth = point.size;
+
+				if(0===index) {
+					ctx.beginPath();
+					ctx.moveTo(point.x, point.y);
+				}
+
+				ctx.lineTo(point.x, point.y);
+			});
 
 			ctx.stroke();
-			0!=params.status && params.end && ctx.restore();
+			ctx.restore();
 			callback && callback();
 		},
 		render: function(_data, callback, isCreateImage) {
@@ -799,7 +814,6 @@
 				idList = [],
 				saving = false,
 				pageMap = {},
-				stepCountMap = {},
 				tabWrap = wrap.getElementsByClassName("pad-tab-list")[0];
 
 			self.build = function(canvas, type, _data, id, del) {
@@ -853,21 +867,17 @@
 			};
 
 			self.push = function(id, _data) {
-				var self = this;
+				var self = this, count = 0;
 				if(!dataMap[id]) dataMap[id] = [];
 				dataMap[id].push(_data);
 				self.tab.saveData.call(self);
 
-				if(_data.origin) {
-					var _count = stepCountMap[id] || 0;
-					_count++;
+				dataMap[id].forEach(function(d) {
+					if("auto"!=d.from) count++;
+				});
 
-					if(_count>=self.params.saveImgStep) {
-						data.saveAsImage.call(self, dataMap[id], self.container[id].type);
-						stepCountMap[id] = 0;
-					} else {
-						stepCountMap[id] = _count;
-					}
+				if(count-self.params.saveImgStep>=self.params.saveImgStep) {
+					data.saveAsImage.call(self, dataMap[id], self.container[id].type);
 				}
 			};
 
@@ -1014,7 +1024,6 @@
 		}
 
 		var self = this,
-			stepCountMap = {},
 			currentPage = 1,
 			that = params.that,
 			_data = data.splitPage(params.data),
@@ -1154,21 +1163,17 @@
 		});
 
 		this.push = function(d) {
-			var activeTab = that.tab.getActive();
+			var activeTab = that.tab.getActive(), count = 0;
 			d.pageNumber = currentPage;
 			_data[currentPage-1].push(d);
 			that.tab.saveData.call(that);
 
-			if("file"!=d.type && d.origin) {
-				var _count = stepCountMap[currentPage] || 0;
-				_count++;
+			_data[currentPage-1].forEach(function(d) {
+				if("file"!=d.type && "auto"!=d.from) count++;
+			});
 
-				if(_count>=that.params.saveImgStep) {
-					data.saveAsImage.call(that, _data[currentPage-1], that.container[activeTab.id].type);
-					stepCountMap[currentPage] = 0;
-				} else {
-					stepCountMap[currentPage] = _count;
-				}
+			if(count-that.params.saveImgStep>=that.params.saveImgStep) {
+				data.saveAsImage.call(that, _data[currentPage-1], that.container[activeTab.id].type);
 			}
 		};
 
@@ -1669,10 +1674,10 @@
 
 			switch(true) {
 				case 107===which || (187===which && e.shiftKey):
-				current.largen && current.largen.call(self);
+				current && current.largen && current.largen.call(self);
 				break;
 				case 109===which || (189===which && e.shiftKey):
-				current.lesser && current.lesser.call(self);
+				current && current.lesser && current.lesser.call(self);
 				break;
 			}
 		});

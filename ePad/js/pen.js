@@ -10,9 +10,10 @@
 	Pen.prototype = {
 		constructor: Pen,
 		active: function() {},
-		bufferRender: function(data, origin) {
-			var self = this;
-			data = {type: "pen", data: data, status: 0, origin: !!origin, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height};
+		bufferRender: function(_data, origin) {
+			var self = this,
+				data = !!origin?{type: "pen", data: [], status: 0, origin: !!origin, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height}:self.current.interimBuffer.pop();
+			data.data.push(_data);
 			self.current.interimBuffer.push(data);
 			self.render(data);
 		},
@@ -22,7 +23,6 @@
 
 			do {
 				data.status = 1;
-				data.end = (0===self.current.interimBuffer.length);
 				self.current.buffer.push(data);
 				self.render(data);
 				data = self.current.interimBuffer.shift();
