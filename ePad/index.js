@@ -171,11 +171,11 @@
 				rect = node.offsetParent.getBoundingClientRect();
 
 			if(0===type) {
-				var val = e.x - moveEvent.dValue - (rect.x || rect.left);
+				var val = (e.x || e.clientX) - moveEvent.dValue - (rect.x || rect.left);
 				val = 0>val?0:(val + node.offsetWidth>rect.width?rect.width-node.offsetWidth:val);
 				node.style.left = val + "px";
 			} else {
-				var val = e.y - moveEvent.dValue - (rect.y || rect.top);
+				var val = (e.y || e.clientY) - moveEvent.dValue - (rect.y || rect.top);
 				val = 0>val?0:(val + node.offsetHeight>rect.height?rect.height-node.offsetHeight:val);
 				node.style.top = val + "px";
 			}
@@ -188,7 +188,7 @@
 				ele.addEvent(node, eventMap["down"], function() {
 					var args = [].slice.call(arguments, 0),
 						e = args[0] || window.event,
-						start = 0===type?e.x:e.y,
+						start = 0===type?(e.x || e.clientX):(e.y || e.clientY),
 						rect = this.getBoundingClientRect();
 
 					moveEvent.type = type;
