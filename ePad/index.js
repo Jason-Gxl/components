@@ -356,7 +356,6 @@
 				arr = [],
 				file = null,
 				len = _data.length,
-				mainCanvas = self.mainCanvas,
 				activeTab = self.tab.getActive(),
 				createImageCanvas = self.createImageCanvas;
 
@@ -864,8 +863,8 @@
 					_count++;
 
 					if(_count>=self.params.saveImgStep) {
-						stepCountMap[id] = 0;
 						data.saveAsImage.call(self, dataMap[id], self.container[id].type);
+						stepCountMap[id] = 0;
 					} else {
 						stepCountMap[id] = _count;
 					}
@@ -1165,8 +1164,8 @@
 				_count++;
 
 				if(_count>=that.params.saveImgStep) {
-					stepCountMap[currentPage] = 0;
 					data.saveAsImage.call(that, _data[currentPage-1], that.container[activeTab.id].type);
+					stepCountMap[currentPage] = 0;
 				} else {
 					stepCountMap[currentPage] = _count;
 				}
