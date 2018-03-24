@@ -43,6 +43,10 @@
 					<input type="text" name="file0"/>
 				</li>
 			</ul>
+			<div class="tab-name-wrap">
+				<label>TAB名称：</label>
+				<input type="text" name="tabName"/>
+			</div>
 		</form>
 		<input type="button" value="添加" id="add_btn"/>
 		<input type="button" value="演示" id="show_btn"/>
@@ -56,12 +60,13 @@
 <script type="text/javascript" src="./js/image.js"></script>
 <script type="text/javascript" src="./js/eraser.js"></script>
 <script type="text/javascript" src="./js/ferula.js"></script>
-<script type="text/javascript" src="./index.js"></script>
+<script type="text/javascript" src="./js/index.js"></script>
 <!-- <script type="text/javascript" src="./dist/js/index.min.js"></script> -->
 <script type="text/javascript">
 var number = 0,
 	fileListWrap = document.getElementsByClassName("file-list-wrap")[0],
-	fileWrapItem = fileListWrap.getElementsByClassName("file-item-wrap")[0];
+	fileWrapItem = fileListWrap.getElementsByClassName("file-item-wrap")[0],
+	tabNameInputWrap = document.getElementsByClassName("tab-name-wrap")[0];
 
 document.getElementById("add_btn").addEventListener("click", function() {
 	number++;
@@ -72,7 +77,8 @@ document.getElementById("add_btn").addEventListener("click", function() {
 
 document.getElementById("show_btn").addEventListener("click", function() {
 	var files = [],
-		fileInputs = [].slice.call(fileListWrap.getElementsByTagName("input"), 0);
+		fileInputs = [].slice.call(fileListWrap.getElementsByTagName("input"), 0),
+		tabNameInput = tabNameInputWrap.getElementsByTagName("input")[0];
 
 	fileInputs.forEach(function(fileItem) {
 		files.push(fileItem.value);
@@ -82,12 +88,12 @@ document.getElementById("show_btn").addEventListener("click", function() {
 		files: files,
 		newTab: true,
 		isShow: true,
+		tabName: tabNameInput.value || "",
 		from: 1,
 		tabId: Date.now()
 	};
 
 	pad1.showFiles(data);
-	pad2.showFiles(data);
 });
 
 var pad1 = wPad.init({
@@ -101,16 +107,20 @@ var pad1 = wPad.init({
 		pad2.render(data);
 		console.log(data);
 	},
+	onShowFiles: function(data) {
+		pad2.showFiles(data);
+		console.log(data);
+	},
 	onMousemove: function(data) {
 		console.log(data);
 		pad2.mouseCtrl(data);
 	},
-	onClear: function(id) {
-		pad2.clear(id);
+	onClear: function(data) {
+		pad2.clear(data);
 	},
 	onTabChange: function(id) {
 		console.log(1);
-		//pad2.changeTab(id);
+		pad2.changeTab(id);
 	},
 	onTabRemove: function(id) {
 		pad2.removeTab(id);
@@ -129,23 +139,26 @@ var pad2 = wPad.init({
 	autoSaveTime: 5,
 	disable: false,
 	onRender: function(data) {
-		pad1.render(data);
+		//pad1.render(data);
 		console.log(data);
+	},
+	onShowFiles: function(data) {
+		
 	},
 	onMousemove: function(data) {
 		//pad1.mouseCtrl(data);
 	},
-	onClear: function(id) {
-		pad1.clear(id);
+	onClear: function(data) {
+		//pad1.clear(data);
 	},
 	onTabChange: function(id) {
-		pad1.changeTab(id);
+		//pad1.changeTab(id);
 	},
 	onTabRemove: function(id) {
-		pad1.removeTab(id);
+		//pad1.removeTab(id);
 	},
 	onPageTurn: function(id, pageNumber) {
-		pad1.turnPage(id, pageNumber);
+		//pad1.turnPage(id, pageNumber);
 	}
 });
 </script>

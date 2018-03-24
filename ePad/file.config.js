@@ -20,7 +20,7 @@ module.exports = {
 		}
 	],*/
 	css: [{
-		files: "./*.css",
+		files: "./css/*.css",
 		dirname: "",
 		basePath: ""
 	}/*, {
@@ -28,7 +28,7 @@ module.exports = {
 		output: "demo"
 	}*/],
 	js: {
-		files: ["./js/eraser.js", "./js/ferula.js", "./js/image.js", "./js/line.js", "./js/pen.js", "./js/rectangle.js", "./js/round.js", "./js/text.js", "./index.js"],
+		files: ["./js/eraser.js", "./js/ferula.js", "./js/image.js", "./js/line.js", "./js/pen.js", "./js/rectangle.js", "./js/round.js", "./js/text.js", "./js/index.js"],
 		output: "index",
 		basePath: ""
 	},

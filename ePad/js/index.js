@@ -1,0 +1,1967 @@
+;(function() {
+	"use strict";
+	var vm = window.vm || {},
+		toString = Object.prototype.toString,
+		padMap = {},
+		padCount = 0,
+		padTab = [],
+		isMobile = /(\bmobile\b|\bandroid\b)/i.test(navigator.userAgent),
+		isFireFox = /\bfirefox\b/i.test(navigator.userAgent),
+		eventMap = {
+			click: isMobile?"touchend":"click",
+			down: isMobile?"touchstart":"mousedown",
+			move: isMobile?"touchmove":"mousemove",
+			up: isMobile?"touchend":"mouseup",
+			wheel: isFireFox?"DOMMouseScroll":"mousewheel"
+		},
+		layoutClassMap = {
+			leftTop: "left-top",
+			rightTop: "right-top",
+			rightBottom: "right-bottom",
+			leftBottom: "left-bottom"
+		},
+		defaultConfig = {
+			layout: "leftTop",
+			size: "100%",
+			vertical: false,
+			disable: false,
+			wrap: document.body,
+			autoSaveTime: 10,
+			saveImgStep: 5,
+			color: "#000",
+			background: "#fff",
+			eraserSize: 5,
+			ferulaSize: 5,
+			toolbars: isMobile?["pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear"]:["ferula", "pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear", "color"]
+			//toolbars: ["ferula", "ellipesstroke", "rectstroke", "pen", "eraser", "rect", "ellipes", "text", "line", "arrow", "color", "export", "scissors", "clear", "enlarge", "file", "handPad"]
+		},
+		childToolbars = {
+			rectangle: ["rectstroke", "rect"],
+			line: ["line", "arrow"],
+			round: ["circle", "roundel", "ellipesstroke", "ellipes"],
+			eraser: ["circular", "quadrate"]
+		},
+		titles = {
+			ferula: "教鞭",
+			circle: "空心圆",
+			roundel: "实心圆",
+			ellipesstroke: "空心椭圆", 
+			rectstroke: "空心矩形", 
+			pen: "画笔",
+			circular: "圆形橡皮擦",
+			quadrate: "方形橡皮擦",
+			rect:'实心矩形',
+			ellipes: '实心椭圆',
+			text: "文本",
+			line: "直线", 
+			arrow: "箭头", 
+			color: "颜色", 
+			export: "导出", 
+			scissors:"截图",
+			clear: "清空",
+			image: "图片"
+		},
+		classes = {
+			ferula: "icon-teach-rod",
+			circle: "icon-round-a",
+			roundel: "icon-round-c",
+			ellipesstroke: "icon-ellipse-b",
+			rectstroke: "icon-rectangle-a",
+			pen: "icon-pen",
+			circular: "icon-xiangpica",
+			quadrate: "icon-rubber",
+			rect: "icon-rectangle-c",
+			ellipes: "icon-ellipse-a",
+			text: "icon-font",
+			line: "icon-line",
+			arrow: "icon-arrow",
+			color: "icon-colour",
+			export: "icon-keep",
+			scissors: "icon-screenshot",
+			clear: "icon-empty",
+			image: "icon-pic"
+		},
+		tabNameMap = {
+			0: "白板",
+			1: "文档演示"
+		};
+
+	var tpl1 = '\
+		<div class="pad-wrap $LAYOUT$ $DISABLED$">\
+			<div class="toolbar-wrap">\
+				<ul class="toolbar-list">$TOOLBARS$</ul>\
+			</div>\
+			<div class="can-wrap-outer">\
+				<div class="can-wrap">\
+					<input type="text" class="text-input tool-input"/>\
+					<canvas class="main-can">抱歉！您的浏览器版本太低，暂时不支持此白板！</canvas>\
+					<canvas class="buffer-can-4"></canvas>\
+					<canvas class="buffer-can-3"></canvas>\
+					<canvas class="buffer-can-2"></canvas>\
+					<canvas class="buffer-can-1"></canvas>\
+				</div>\
+				<div class="split-page-wrap"></div>\
+				<div class="scroll-y-wrap pad-hide"><span class="scroll-y scroll-toolbar"></span></div>\
+				<div class="scroll-x-wrap pad-hide"><span class="scroll-x scroll-toolbar"></span></div>\
+			</div>\
+			<div class="pad-tab-wrap">\
+				<ul class="pad-tab-list"></ul>\
+			</div>\
+			<input type="file" accept="image/png, image/jpeg" class="file-input tool-input"/>\
+			<input type="color" class="color-input tool-input"/>\
+		</div>';
+
+	var tpl2 = '<li class="toolbar-item" title="$TITLE$"><span class="item-icon iconfont $ICONCLASS$" item="$ITEM$" level="$LEVEL$"></span>$CHILDTOOLBARS$</li>';
+
+	var tpl3 = '<ul class="child-toolbar-list">$CHILDTOOLBARITEM$</ul>';
+
+	var tpl4 = '\
+		<div>\
+			<a href="javascript:void(0);" class="pre-page-btn iconfont icon-zuofanye"></a>\
+			<a href="javascript:void(0);" class="next-page-btn iconfont icon-youfanye"></a>\
+			<span><input type="text" class="page-number-input"/>/$TOTAL$<a href="javascript:void(0);" class="go-page-btn">GO</a></span>\
+		</div>';
+
+	var tpl5 = '<li class="toolbar-item full-screen-btn-wrap"><span class="item-icon full-screen-btn iconfont icon-enlarge" item="fullScreen"></span></li>';
+
+	vm.module = vm.module || {};
+
+	var ele = {
+		addEvent: window.addEventListener?function(target, type, fn, use) {
+			target.addEventListener(type, fn, use||false);
+		}:function(target, type, fn) {
+			target.attachEvent("on"+type, fn);
+		},
+		delEvent: window.addEventListener?function(target, type, fn, use) {
+			target.removeEventListener(type, fn, use||false);
+		}:function(target, type, fn) {
+			target.detachEvent("on"+type, fn);
+		},
+		addClass: function(ele, className) {
+			if(ele===void(0) || className===void(0)) return ;
+			var reg = new RegExp("\\b"+className+"\\b", "g");
+
+			if(!reg.test(ele.className)) {
+				ele.className = ele.className + " " + className;
+			}
+		},
+		removeClass: function(ele, className) {
+			if(ele===void(0) || className===void(0)) return ;
+			var reg = new RegExp("\\b"+className+"\\b", "g");
+
+			if(reg.test(ele.className)) {
+				ele.className = ele.className.replace(reg, "");
+			}
+		},
+		preNode: function(ele) {
+			return ele.previousElementSibling || ele.previousSibling;
+		},
+		nextNode: function(ele) {
+			return ele.nextElementSibling || ele.nextSibling;
+		},
+		css: function(ele, attrName, attrValue) {
+			ele.style[attrName] = attrValue || "";
+		}
+	};
+
+	var scroll = (function() {
+		var moveEvent = function() {
+			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event,
+				type = moveEvent.type,
+				node = moveEvent.node,
+				rect = node.offsetParent.getBoundingClientRect();
+
+			if(0===type) {
+				var val = (e.x || e.clientX) - moveEvent.dValue - (rect.x || rect.left);
+				val = 0>val?0:(val + node.offsetWidth>rect.width?rect.width-node.offsetWidth:val);
+				node.style.left = val + "px";
+			} else {
+				var val = (e.y || e.clientY) - moveEvent.dValue - (rect.y || rect.top);
+				val = 0>val?0:(val + node.offsetHeight>rect.height?rect.height-node.offsetHeight:val);
+				node.style.top = val + "px";
+			}
+
+			moveEvent.callback(val);
+		};
+
+		return {
+			init: function(node, type, callback) {
+				ele.addEvent(node, eventMap["down"], function() {
+					var args = [].slice.call(arguments, 0),
+						e = args[0] || window.event,
+						start = 0===type?(e.x || e.clientX):(e.y || e.clientY),
+						rect = this.getBoundingClientRect();
+
+					moveEvent.type = type;
+					moveEvent.node = this;
+					moveEvent.callback = callback;
+					moveEvent.dValue = start - (0===type?(rect.x || rect.left):(rect.y || rect.top));
+					ele.addEvent(document, eventMap["move"], moveEvent);
+
+					ele.addEvent(document, eventMap["up"], function() {
+						ele.delEvent(document, eventMap["move"], moveEvent);
+					});
+				});				
+			}
+		};
+	}());
+
+	var data = {
+		get uuid() {
+			var len = 20, str = ""
+			for(;str.length<len;str+=Math.random().toString().substr(2));
+			return str.substr(0, len);
+		},
+		scale: function(_data) {
+			var that = this,
+				val = _data,
+				type = val.type,
+				scaleWidth = null,
+				scaleHeight = null;
+
+			if(!scaleWidth || !scaleHeight) {
+				scaleWidth = that.mainCanvas.width/val.width;
+				scaleHeight = that.mainCanvas.height/val.height;
+			}
+
+			switch(type) {
+				case "pen":
+				val.data.x = val.data.x * scaleWidth;
+				val.data.y = val.data.y * scaleHeight;
+				break;
+				case "text":
+				val.data[0] = val.data[0] * scaleWidth;
+				val.data[1] = val.data[1] * scaleWidth;
+				break;
+				case "image":
+
+				break;
+				case "file":
+
+				break;
+				case "eraser":
+				val.data.x = val.data.x * scaleWidth;
+				val.data.y = val.data.y * scaleHeight;
+				val.data.size = val.data.size * scaleWidth;
+				break;
+				default:
+				if(val.data[0]) val.data[0] = !isNaN(val.data[0])?val.data[0] * scaleWidth:val.data[0];
+				if(val.data[1]) val.data[1] = !isNaN(val.data[1])?val.data[1] * scaleWidth:val.data[1];
+				if(val.data[2]) val.data[2] = !isNaN(val.data[2])?val.data[2] * scaleWidth:val.data[2];
+				if(val.data[3]) val.data[3] = !isNaN(val.data[3])?val.data[3] * scaleWidth:val.data[3];
+			}
+		},
+		copy: function() {
+			var args = [].slice.call(arguments, 0),
+				firstArg = args.shift(),
+				len = args.length;
+
+			if(len) {
+				var type = toString.call(firstArg);
+				if("[object Object]"!=type && "[object Array]"!=type) return firstArg;
+
+				args.forEach(function(arg) {
+					var _type = toString.call(arg);
+					if("[object Object]"!=_type && "[object Array]"!=_type) return ;
+
+					if("[object Object]"===_type) {
+
+						if("[object Array]"===type) {
+							var container = {};
+						}
+
+						for(var key in arg) {
+							var val = arg[key],
+								type = toString.call(val);
+
+							if(container) {
+								if("[object Object]"===type || "[object Array]"===type) {
+									container[key] = data.copy(val);
+								} else {
+									container[key] = val;
+								}
+							} else {
+								if("[object Object]"===type || "[object Array]"===type) {
+									firstArg[key] = data.copy(val);
+								} else {
+									firstArg[key] = val;
+								}
+							}							
+						}
+
+						if(container) {
+							firstArg.push(container);
+						}
+					} else {
+						arg.forEach(function(item, index) {
+							var _type = toString.call(item);
+
+							if("[object Object]"===type) {
+								if("[object Object]"===_type || "[object Array]"===_type) {
+									firstArg[index] = data.copy(val);
+								} else {
+									firstArg[index] = val;
+								}
+							} else {
+								if("[object Object]"===_type || "[object Array]"===_type) {
+									firstArg.push(data.copy(val));
+								} else {
+									firstArg.push(val);
+								}
+							}
+						});
+					}
+				});
+
+				return firstArg;
+			} else {
+				var type = toString.call(firstArg);
+
+				if("[object Object]"!=type && "[object Array]"!=type) {
+					return firstArg;
+				} else {
+					if("[object Object]"===type) {
+						var container = {};
+
+						for(var key in firstArg) {
+							var val = firstArg[key],
+								type = toString.call(val);
+
+							if("[object Object]"===type || "[object Array]"===type) {
+								container[key] = data.copy(val);
+							} else {
+								container[key] = val;
+							}
+						}
+					} else {
+						var container = [];
+
+						firstArg.forEach(function(item) {
+							var type = toString.call(item);
+
+							if("[object Object]"===type || "[object Array]"===type) {
+								container.push(data.copy(item));
+							} else {
+								container.push(item);
+							}
+						});
+					}					
+				}
+
+				return container;
+			}
+		},
+		saveAsImage: function(_data, type) {
+			var self = this,
+				count = 0,
+				arr = [],
+				file = null,
+				len = _data.length,
+				activeTab = self.tab.getActive(),
+				createImageCanvas = self.createImageCanvas;
+
+			var _createImage = function() {
+				var imgData=createImageCanvas.toDataURL(),
+					page = self.tab.getPage(activeTab.id);
+				createImageCanvas.width = createImageCanvas.width;
+
+				var _data_ = {
+					type: "image",
+					data: [imgData, 0, 0],
+					width: 0,
+					height: 0,
+					status: 1, 
+					origin: true,
+					from: "auto"
+				};
+
+				if(page) {
+					_data_.pageNumber = page.getPageNumber();
+				}
+
+				file && _data.push(file);
+				_data.push(_data_);
+				[].push.apply(_data, arr);
+				self.tab.saveData.call(self);
+			};
+
+			var next = function(list) {
+				var d = list.shift();
+				if(!d) return _createImage();
+
+				if("file"===d.type) {
+					file = d;
+					next(list);
+				} else {
+					data.render.call(self, d, function() {
+						next(list);
+					}, true);
+				}
+			};
+
+			while(len--) {
+				var d = _data.pop();
+				arr.unshift(d);
+				d.origin && count++;
+
+				if(self.params.saveImgStep<=count) {
+					createImageCanvas.width = createImageCanvas.width;
+
+					if(_data.length) {
+						next(_data);
+					} else {
+						[].push.apply(_data, arr);
+					}
+
+					break;
+				}
+			}
+		},
+		trim: function(content) {
+			if(!content || "[object String]"!=toString.call(content)) return ;
+			return content.replace(/^\s*|\s*$/, "");
+		},
+		splitPage: function(_data) {
+			var obj = {},
+				keys = [],
+				list = [];
+
+			_data.forEach(function(d) {
+				if("[object String]"===toString.call(d)) {
+					list.push(d);
+				} else {
+					obj[d.pageNumber] = obj[d.pageNumber] || [];
+					obj[d.pageNumber].push(d);
+				}
+			});
+
+			for(var key in obj) {
+				keys.push(key);
+			}
+
+			keys.sort();
+
+			keys.forEach(function(key) {
+				list.push(obj[key]);
+			});
+
+			return list;
+		},
+		renderPen: function(params, callback, isCreateImage) {
+			var self = this,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
+				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				ctx = canvas.getContext("2d");
+
+			if(0===params.status) {
+				canvas.width = canvas.width;
+			} else {
+				self.bufferCanvas.width = self.bufferCanvas.width;
+			}
+			
+			ctx.strokeStyle = params.color;
+			ctx.lineWidth = 1;
+			ctx.save();
+			ctx.scale(wScale, hScale);
+
+			data.forEach(function(point, index) {
+				if(0===index) {
+					ctx.beginPath();
+					ctx.moveTo(point.x, point.y);
+				} else {
+					ctx.lineTo(point.x, point.y);
+				}
+			});
+
+			ctx.stroke();
+			ctx.restore();
+			callback && callback();
+		},
+		renderRect: function(params, callback, isCreateImage) {
+			var self = this,
+				mode = params.mode,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
+				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				ctx = canvas.getContext("2d");
+
+			if(0===params.status) {
+				canvas.width = canvas.width;
+			} else {
+				self.bufferCanvas.width = self.bufferCanvas.width;
+			}
+
+			ctx.save();
+			ctx.scale(wScale, hScale);
+			ctx.beginPath();
+
+			if(0===params.mode) {
+				ctx.strokeStyle = params.color;
+				ctx.lineWidth = 1;
+				ctx.strokeRect(data[0], data[1], data[2], data[3]);
+			} else {
+				ctx.fillStyle = params.color;
+				ctx.fillRect(data[0], data[1], data[2], data[3]);
+			}
+
+			ctx.restore();
+			callback && callback();
+		},
+		renderLine: function(params, callback, isCreateImage) {
+			var self = this,
+				mode = params.mode,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
+				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				ctx = canvas.getContext("2d");
+
+			if(0===params.status) {
+				canvas.width = canvas.width;
+			} else {
+				self.bufferCanvas.width = self.bufferCanvas.width;
+			}
+
+			ctx.strokeStyle = params.color;
+			ctx.lineWidth = 1;
+			ctx.save();
+			ctx.scale(wScale, hScale);
+			ctx.beginPath();
+			ctx.moveTo(data[0], data[1]);
+			ctx.lineTo(data[2], data[3]);
+
+			if(1===mode) {
+				var angle = Math.atan2(data[1]-data[3], data[0]-data[2])*180/Math.PI,
+					angle1 = (angle+30)*Math.PI/180,
+					angle2 = (angle-30)*Math.PI/180,
+					topx = 15*Math.cos(angle1),
+					topy = 15*Math.sin(angle1),
+					botx = 15*Math.cos(angle2),
+					boty = 15*Math.sin(angle2);
+
+				ctx.moveTo(topx+data[2], topy+data[3]);
+				ctx.lineTo(data[2], data[3]);
+				ctx.moveTo(botx+data[2], boty+data[3]);
+				ctx.lineTo(data[2], data[3]);
+			}
+
+			ctx.stroke();
+			ctx.restore();
+			callback && callback();
+		},
+		renderRound: function(params, callback, isCreateImage) {
+			var self = this,
+				mode = params.mode,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
+				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				ctx = canvas.getContext("2d");
+
+			if(0===params.status) {
+				canvas.width = canvas.width;
+			} else {
+				self.bufferCanvas.width = self.bufferCanvas.width;
+			}
+
+			ctx.save();
+			ctx.scale(wScale, hScale);
+			ctx.beginPath();
+
+			switch(mode) {
+				case 0:
+				ctx.strokeStyle = params.color;
+				ctx.lineWidth = 1;
+				ctx.arc(data[0], data[1], data[2], 0, 2*Math.PI);
+				ctx.stroke();
+				break;
+				case 1:
+				ctx.fillStyle = params.color;
+				ctx.arc(data[0], data[1], data[2], 0, 2*Math.PI);
+				ctx.fill();
+				break;
+				case 2:
+				ctx.strokeStyle = params.color;
+				ctx.lineWidth = 1;
+				var r = data[2]>data[3]?data[2]:data[3],
+					scaleX = data[2]/r,
+					scaleY = data[3]/r;
+				ctx.scale(scaleX, scaleY);
+				ctx.arc(data[0]/scaleX, data[1]/scaleY, r, 0, 2*Math.PI);
+				ctx.closePath();
+				ctx.stroke();
+				break;
+				case 3:
+				ctx.fillStyle = params.color;
+				var r = data[2]>data[3]?data[2]:data[3],
+					scaleX = data[2]/r,
+					scaleY = data[3]/r;
+				ctx.scale(scaleX, scaleY);
+				ctx.arc(data[0]/scaleX, data[1]/scaleY, r, 0, 2*Math.PI);
+				ctx.closePath();
+				ctx.fill();
+				break;
+			}
+
+			ctx.restore();
+			callback && callback();
+		},
+		renderText: function(params, callback, isCreateImage) {
+			var self = this,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
+				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				ctx = canvas.getContext("2d");
+
+			if(0===params.status) {
+				canvas.width = canvas.width;
+			} else {
+				self.bufferCanvas.width = self.bufferCanvas.width;
+			}
+			
+			ctx.fillStyle = params.color;
+			ctx.save();
+			ctx.scale(wScale, hScale);
+			ctx.beginPath();
+			ctx.fillText(data[2], data[0], data[1]);
+			ctx.restore();
+			callback && callback();
+		},
+		renderImage: function(params, callback, isCreateImage) {
+			var self = this,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
+				data = params.data,
+				img = new Image(),
+				ctx = canvas.getContext("2d");
+
+			img.setAttribute("crossOrigin", "anonymous");
+			img.src = data[0];
+			var cw = canvas.clientWidth, ch = canvas.clientHeight;
+
+			img.onload = function() {
+				var imgWidth = img.width,
+					imgHeight = img.height,
+					dw = cw - imgWidth, 
+					dh = ch - imgHeight;
+
+				ctx.save();
+
+				if(dw>=0 && dh>=0) {
+					var x = dw/2, y = dh/2;
+					ctx.drawImage(img, dw/2, dh/2);
+					params.fileWidth = imgWidth;
+					params.fileHeight = imgHeight;
+					data[1] = x;
+					data[2] = y;
+				} else {
+					var cwhp = cw/ch, iwhp = img.width/img.height;
+
+					if(cwhp>iwhp) {
+						ctx.drawImage(img, (cw-ch*iwhp)/2, 0, ch*iwhp, ch);
+						params.fileWidth = ch*iwhp;
+						params.fileHeight = ch;
+						data[1] = (cw-ch*iwhp)/2;
+						data[2] = 0;
+					} else {
+						ctx.drawImage(img, 0, (ch-cw/iwhp)/2, cw, cw/iwhp);
+						params.fileWidth = cw;
+						params.fileHeight = cw/iwhp;
+						data[1] = 0;
+						data[2] = (ch-cw/iwhp)/2;
+					}
+				}
+
+				ctx.restore();
+				callback && callback();
+			};
+		},
+		delete: function(params, callback, isCreateImage) {
+			var self = this,
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
+				data = params.data,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				scale = wScale<hScale?wScale:hScale,
+				ctx = canvas.getContext("2d");
+
+			if(0===params.status) {
+				canvas.width = canvas.width;
+			} else {
+				self.bufferCanvas.width = self.bufferCanvas.width;
+			}
+			
+			ctx.strokeStyle = self.params.background;
+			ctx.fillStyle = self.params.background;
+
+			if(0===params.mode) {
+				ctx.lineJoin = "round";
+				ctx.lineCap = "round";
+			} else {
+				ctx.lineCap = "square";
+				ctx.lineJoin = "bevel";
+			}
+
+			ctx.save();
+			ctx.scale(scale, scale);
+
+			data.forEach(function(point, index) {
+				ctx.lineWidth = point.size;
+
+				if(0===index) {
+					ctx.beginPath();
+					ctx.moveTo(point.x, point.y);
+				}
+
+				ctx.lineTo(point.x, point.y);
+			});
+
+			ctx.stroke();
+			ctx.restore();
+			callback && callback();
+		},
+		render: function(_data, callback, isCreateImage) {
+			var self = this, type = _data.type;
+
+			switch(type) {
+				case "pen":
+				data.renderPen.call(self, _data, callback, isCreateImage);
+				break;
+				case "rectangle":
+				data.renderRect.call(self, _data, callback, isCreateImage);
+				break;
+				case "line":
+				data.renderLine.call(self, _data, callback, isCreateImage);
+				break;
+				case "round":
+				data.renderRound.call(self, _data, callback, isCreateImage);
+				break;
+				case "text":
+				data.renderText.call(self, _data, callback, isCreateImage);
+				break;
+				case "image":
+				data.renderImage.call(self, _data, callback, isCreateImage);
+				break;
+				case "file":
+				data.renderImage.call(self, _data, callback, isCreateImage);
+				break;
+				case "eraser":
+				data.delete.call(self, _data, callback, isCreateImage);
+			}
+		}
+	};
+
+	var mouse = {
+		eraser: function(params) {
+			var self = this,
+				canvas = self.mouseIconCanvas,
+				data = params.data,
+				mode = params.mode,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				scale = wScale<hScale?wScale:hScale,
+				ctx = canvas.getContext("2d");
+
+			canvas.width = canvas.width;
+			ctx.scale(scale, scale);
+			ctx.beginPath();
+
+			if(0===mode) {
+				ctx.arc(data[0], data[1], data[2]/2, 0, 2*Math.PI);
+				ctx.stroke();
+			} else {
+				var px = data[0]-data[2]/2,
+					py = data[1]-data[2]/2;
+				ctx.rect(px, py, data[2], data[2]);
+				ctx.stroke();
+			}
+		},
+		ferula: function(params) {
+			var self = this,
+				canvas = self.mouseIconCanvas,
+				data = params.data,
+				ferulaSize = self.params.ferulaSize,
+				wScale = self.params.width/params.width,
+				hScale = self.params.height/params.height,
+				scale = wScale<hScale?wScale:hScale,
+				ctx = canvas.getContext("2d");
+
+			canvas.width = canvas.width;
+			ctx.scale(scale, scale);
+			ctx.beginPath();
+			ctx.fillStyle = "red";
+			ctx.arc(data[0], data[1], ferulaSize, 0, 2*Math.PI);
+			ctx.fill();
+		},
+		render: function(_data) {
+			var self = this, type = _data.type;
+			mouse[type] && mouse[type].call(self, _data);
+		}
+	};
+
+	var Tab = (function() {
+		var UL = document.createElement("UL"),
+			tabTpl = '<li class="pad-tab-item" title="$LABEL$">$LABEL$$DELETEBTN$</li>',
+			delTpl = '<i class="iconfont icon-close"></i>';
+
+		function _tab(wrap) {
+			var self = this,
+				tabMap = {},
+				dataMap = {},
+				canvasMap = {},
+				activeObj = {},
+				idList = [],
+				saving = false,
+				pageMap = {},
+				tabWrap = wrap.getElementsByClassName("pad-tab-list")[0];
+
+			self.build = function(canvas, type, _data, _tab, del) {
+				if(!canvas) return ;
+				var that = this,
+					_id = _tab && _tab.id?_tab.id:(0===type?0:data.uuid),
+					_tabTpl = tabTpl.replace(/\$LABEL\$/g, _tab && _tab.name?_tab.name:tabNameMap[type]).replace(/\$DELETEBTN\$/g, del?delTpl:"");
+
+				UL.innerHTML = _tabTpl;
+				idList.push(_id);
+				var li = UL.firstElementChild || UL.firstChild;
+
+				tabMap[_id] = li;
+				dataMap[_id] = _data || [];
+				canvasMap[_id] = canvas;
+
+				if(del) {
+					ele.addEvent(li.getElementsByTagName("i")[0], eventMap["click"], function() {
+						var args = [].slice.call(arguments, 0),
+						 	e = args[0] || window.event;
+						
+						if(window.event) {
+							e.returnValue = false;
+							e.cancelBubble = true;
+						} else {
+							e.preventDefault();
+							e.stopPropagation();
+						}
+
+						self.remove.call(that, _id);
+						that.params.onTabRemove && that.params.onTabRemove(_id);
+					});
+				}
+
+				ele.addEvent(li, eventMap["click"], function() {
+					if(this===activeObj.tab) return ;
+					that.params.onTabChange && that.params.onTabChange(_id);
+					self.active.call(that, _id);
+				});
+
+				tabWrap.appendChild(li);
+
+				that.container[_id] = {
+					data: dataMap[_id],
+					type: type,
+					splitPage: 0,
+					del: del
+				};
+
+				if(_tab && _tab.name) that.container[_id].tabName = _tab.name;
+
+				return _id;
+			};
+
+			self.push = function(id, _data) {
+				var self = this, count = 0;
+				if(!dataMap[id]) dataMap[id] = [];
+				dataMap[id].push(_data);
+				self.tab.saveData.call(self);
+
+				dataMap[id].forEach(function(d) {
+					if("auto"!=d.from) count++;
+				});
+
+				if(count-self.params.saveImgStep>=self.params.saveImgStep) {
+					data.saveAsImage.call(self, dataMap[id], self.container[id].type);
+				}
+			};
+
+			self.saveData = function() {
+				var self = this;
+				if(saving || "never"===self.params.autoSaveTime) return ;
+				self.params.autoSaveTime = isNaN(self.params.autoSaveTime)?10:+self.params.autoSaveTime;
+
+				var it = setTimeout(function() {
+					for(var key in pageMap) {
+						var page = pageMap[key];
+						dataMap[key].length = 0;
+						[].push.apply(dataMap[key], page.getData());
+					}
+
+					window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
+					clearTimeout(it);
+					saving = false;
+				}, self.params.autoSaveTime*1000);
+
+				saving = true;
+			};
+
+			self.remove = function(_id) {
+				var self = this,
+					li = tabMap[_id],
+					index = idList.indexOf(_id);
+				delete tabMap[_id];
+				delete dataMap[_id];
+				delete canvasMap[_id];
+				delete self.container[_id];
+
+				if(pageMap[_id]) {
+					pageMap[_id].hide();
+					delete pageMap[_id];
+				}
+
+				tabWrap.removeChild(li);
+				idList.splice(index, 1);
+				_id = idList[index-1>=0?index-1:0];
+				self.tab.active.call(self, _id);
+				window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
+			};
+
+			self.active = function(_id) {
+				var self = this, _data = dataMap[_id];
+
+				if(activeObj.canvas) {
+					ele.css(activeObj.canvas, "zIndex");
+					ele.removeClass(activeObj.tab, "active");
+				}
+
+				if(activeObj.page) {
+					activeObj.page.hide();
+					delete activeObj.page;
+				}
+
+				activeObj.tab = tabMap[_id];
+				activeObj.data = dataMap[_id];
+				activeObj.canvas = canvasMap[_id];
+				activeObj.id = _id;
+				activeObj.type = self.container[_id].type;
+				activeObj.page = pageMap[_id];
+				self.mainCanvas = activeObj.canvas;
+				ele.css(activeObj.canvas, "zIndex", 2);
+				ele.addClass(activeObj.tab, "active");
+				activeObj.page && activeObj.page.show();
+
+				if(_data && !activeObj.page) {
+					activeObj.canvas.width = activeObj.canvas.width;
+					var i = 0, len = _data.length;
+
+					if(len) {
+						var next = function() {
+							var d = _data[i];
+
+							d && data.render.call(self, d, function() {
+								i++;
+								i<len && next();
+							});
+						};
+
+						next();
+					}
+				}
+			};
+
+			self.getActive = function() {
+				return activeObj;
+			};
+
+			self.getTab = function(id) {
+				return tabMap[id];
+			};
+
+			self.clear = function(params) {
+				var self = this;
+
+				if(void(0)===params) {
+					if(activeObj.page) {
+						activeObj.page.clear.call(self);
+					} else {
+						activeObj.data.length = 0;
+						activeObj.canvas.width = activeObj.canvas.width;
+					}
+				} else {
+					var id = params.tabId;
+
+					if(pageMap[id]) {
+						pageMap[id].clear.call(self, params);
+					} else {
+						dataMap[id].length = 0;
+						canvasMap[id].width = canvasMap[id].width;
+					}
+				}
+
+				window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
+			};
+
+			self.setPage = function(id, page) {
+				var that = this;
+				pageMap[id] = page;
+				that.container[id].splitPage = 1;
+			};
+
+			self.getPage = function(id) {
+				return pageMap[id];
+			};
+		}
+
+		_tab.prototype = {
+			constructor: _tab
+		};
+
+		return _tab;
+	}());
+
+	function Page(params) {
+		if(!this instanceof Page) {
+			return new Page(params);
+		}
+
+		var self = this,
+			currentPage = 1,
+			that = params.that,
+			_data = data.splitPage(params.data),
+			total = _data.length,
+			tabId = params.tabId,
+			show = params.show || false,
+			div = document.createElement("DIV"),
+			pageWrap = that.params.wrap.getElementsByClassName("split-page-wrap")[0];
+
+		div.innerHTML = tpl4.replace(/\$TOTAL\$/g, total);
+		var pageEle = div.removeChild(div.firstElementChild || div.firstChild),
+			prePageBtn = pageEle.getElementsByClassName("pre-page-btn")[0],
+			nextPageBtn = pageEle.getElementsByClassName("next-page-btn")[0],
+			goPageBtn = pageEle.getElementsByClassName("go-page-btn")[0],
+			pageNumberInput = pageEle.getElementsByClassName("page-number-input")[0];
+
+		ele.addEvent(prePageBtn, eventMap["click"], function() {
+			if(that.params.disable || currentPage<=1) return ;
+			self.pre();
+		});
+
+		ele.addEvent(nextPageBtn, eventMap["click"], function() {
+			if(that.params.disable || currentPage>=total) return ;
+			self.next();
+		});
+
+		ele.addEvent(goPageBtn, eventMap["click"], function() {
+			if(that.params.disable) return ;
+			var pageNumber = pageNumberInput.value;
+			self.go(pageNumber);
+		});
+
+		this.pre = function() {
+			currentPage--;
+			this.go(currentPage);
+		};
+
+		var render = function(pageNumber, start, callback) {
+			var __data = _data[pageNumber-1];
+
+			if("[object Array]"===toString.call(__data)) {
+				__data.some(function(d, index) {
+					if(index<start) return ;
+					var flag = false;
+
+					if("file"===d.type) {
+						flag = true;
+
+						data.render.call(that, d, function() {
+							if(__data.length-1<=index) {
+								callback && callback();
+							} else {
+								render(pageNumber, ++index, callback);
+							}
+						});
+					} else {
+						data.render.call(that, d);
+						__data.length-1<=index && callback && callback();
+					}
+
+					return flag;
+				});
+			} else {
+				data.render.call(that, __data, callback);
+			}
+		};
+
+		this.go = function(pageNumber, out) {
+			pageNumber = pageNumber<=1?1:pageNumber;
+			pageNumber = pageNumber>=total?total:pageNumber;
+			that.mainCanvas.width = that.mainCanvas.width;
+
+			render(pageNumber, 0, function() {
+				!out && that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber, _data[pageNumber-1][0]);
+			});
+
+			currentPage = pageNumber;
+			pageNumberInput.value = pageNumber;
+
+			switch(true) {
+				case currentPage<=1 && currentPage<total:
+					ele.addClass(prePageBtn, "no");
+					ele.removeClass(nextPageBtn, "no");
+					break;
+				case currentPage>1 && currentPage>=total:
+					ele.removeClass(prePageBtn, "no");
+					ele.addClass(nextPageBtn, "no");
+					break;
+				default:
+					ele.removeClass(prePageBtn, "no");
+					ele.removeClass(nextPageBtn, "no");
+			}
+		};
+
+		this.next = function() {
+			currentPage++;
+			this.go(currentPage);
+		};
+
+		this.show = function() {
+			pageWrap.innerHTML = "";
+			_data.length>1 && pageWrap.appendChild(pageEle);
+			that.page = self;
+			this.go(currentPage);
+		};
+
+		this.hide = function() {
+			if(that.page!=self) return ;
+			_data.length>1 && pageWrap.removeChild(pageEle);
+			delete that.page;
+		};
+
+		this.getPageNumber = function() {
+			return currentPage;
+		};
+
+		this.empower = function() {
+			pageNumberInput.removeAttribute("readonly");
+		};
+
+		this.disable = function() {
+			pageNumberInput.setAttribute("readonly", "readonly");
+		};
+
+		_data.forEach(function(d, i) {
+			if("[object String]"===toString.call(d)) {
+				_data[i] = [{
+					data: [d, 0, 0],
+					pageNumber: i+1,
+					width: that.params.width,
+					height: that.params.height,
+					status: 1,
+					type: "file",
+					from: params.from
+				}];
+			}
+		});
+
+		this.push = function(d) {
+			var activeTab = that.tab.getActive(), count = 0;
+			d.pageNumber = currentPage;
+			_data[currentPage-1].push(d);
+			that.tab.saveData.call(that);
+
+			_data[currentPage-1].forEach(function(d) {
+				if("file"!=d.type && "auto"!=d.from) count++;
+			});
+
+			if(count-that.params.saveImgStep>=that.params.saveImgStep) {
+				data.saveAsImage.call(that, _data[currentPage-1], that.container[activeTab.id].type);
+			}
+		};
+
+		this.getData = function() {
+			var i = 0, arr = [];
+
+			while(i<total) {
+				[].push.apply(arr, _data[i]);
+				i++;
+			}
+
+			return arr;
+		};
+
+		this.clear = function(params) {
+			var pageNumber = (params?params.pageNumber:currentPage) || currentPage;
+			_data[pageNumber-1].length = 1;
+			that.tab.saveData.call(that);
+
+			if(void(0)===params || (params.tabId===that.tab.getActive().id && params.pageNumber===currentPage)) {
+				that.mainCanvas.width = that.mainCanvas.width;
+
+				render(pageNumber, 0, function() {
+					if(void(0)===params) {
+						"[object Function]"===toString.call(that.params.onClear) && that.params.onClear({tabId: that.tab.getActive().id, pageNumber: pageNumber});
+					}
+				});
+			}
+		};
+
+		that.params.disable && this.disable();
+		that.tab.saveData.call(that);
+
+		if(show) {
+			pageWrap.innerHTML = "";
+			_data.length>1 && pageWrap.appendChild(pageEle);
+			self.go(1);
+		}
+	}
+
+	Page.prototype = {
+		constructor: Page
+	};
+
+	function WPad(params) {
+		if(!this instanceof WPad) {
+			return new WPad(params);
+		}
+
+		var that = {
+			pad: this,
+			params: params,
+			waitList: [],
+			container: {},
+			id: params.id || padCount++,
+			render: function(_data) {
+				data.render.call(that, _data, function() {
+					if(params.onRender) {
+						var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
+
+						obj[activeTab.id] = {
+							data: outData,
+							type: activeTab.type,
+							splitPage: activeTab.page?1:0
+						};
+
+						params.onRender(obj);
+					}
+				});
+				_data.width = that.mainCanvas.width;
+				_data.height = that.mainCanvas.height;
+
+				if(_data.status) {
+					var activeTab = that.tab.getActive();
+
+					if(activeTab.page) {
+						activeTab.page.push.call(that, _data);
+					} else {
+						that.tab.push.call(that, activeTab.id, _data);
+					}
+				}
+			},
+			mouseRender: function(_data) {
+				mouse.render.call(that, _data);
+				_data.width = that.mainCanvas.width;
+				_data.height = that.mainCanvas.height;
+
+				if(params.onMousemove) {
+					var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
+
+					obj[activeTab.id] = {
+						data: outData,
+						type: activeTab.type
+					};
+
+					params.onMousemove(obj);
+				}
+			}
+		};
+		
+		buildPad.call(that);
+
+		var render = function(_data) {
+			var activeTab = that.tab.getActive();
+
+			for(var key in _data) {
+				var val = _data[key],
+					type = val.type,
+					val = val.data;
+
+				if(key==activeTab.id) {
+					data.render.call(that, val);
+
+					if(val.status) {
+						if(activeTab.page) {
+							activeTab.page.push.call(that, val);
+						} else {
+							that.tab.push.call(that, key, val);
+						}
+					}
+				} else {
+					if(that.tab.getTab(key)) {
+						if(val.status) {
+							var page = that.tab.getPage(key);
+
+							if(page) {
+								page.push.call(that, val, key);
+							} else {
+								that.tab.push.call(that, key, val);
+							}
+						}
+					} else {
+						that.tab.build.call(that, that.fileCanvas, 1, [val], {id: key}, false);
+					}
+				}
+			}
+		};
+
+		var renderMouse = function(_data) {
+			var scaleWidth = null,
+				scaleHeight = null;
+
+			for(var key in _data) {
+				var val = _data[key],
+					type = val.type,
+					val = val.data;
+				mouse.render.call(that, val);
+			}
+		};
+
+		this.render = function(_data) {
+			if("[object Object]"!=toString.call(_data)) {
+				console.error("TypeError: data must be Object");
+				return ;
+			}
+			
+			render(_data);
+		};
+
+		this.renderAll = function(dataArr) {
+			if("[object Object]"!=toString.call(dataArr)) {
+				console.error("TypeError: data must be Array");
+				return ;
+			}
+
+			dataArr.forEach(function(_data) {
+				render(_data);
+			});
+		};
+
+		this.mouseCtrl = function(_data) {
+			if("[object Object]"!=toString.call(_data)) {
+				console.error("TypeError: data must be Object");
+				return ;
+			}
+
+			renderMouse(_data);
+		};
+
+		this.clear = function(params) {
+			that.tab.clear.call(that, params);
+		};
+
+		this.disable = function() {
+			ele.addClass(params.wrap.firstElementChild||params.wrap.firstChild, "disabled");
+			params.disable = true;
+		};
+
+		this.enable = function() {
+			ele.removeClass(params.wrap.firstElementChild||params.wrap.firstChild, "disabled");
+			params.disable = false;
+		};
+
+		this.createImage = function() {
+			return that.mainCanvas.toDataURL();
+		};
+
+		this.changeTab = function(id) {
+			that.tab.active.call(that, id);
+		};
+
+		this.turnPage = function(id, number) {
+			var activeTab = that.tab.getActive();
+
+			if(id===activeTab.id) {
+				var pageObj = that.tab.getPage.call(that, id);
+				pageObj.go(number, true);
+			}
+		};
+
+		this.removeTab = function(id) {
+			if(void(0)===id) return ;
+			that.tab.remove.call(that, id);
+		};
+
+		ele.addEvent(params.wrap, "mouseenter", function() {
+			that.active = true;
+		});
+
+		ele.addEvent(params.wrap, "mouseleave", function() {
+			that.active = false;
+		});
+	}
+
+	function buildPad() {
+		var self = this,
+			params = this.params,
+			wrap = params.wrap,
+			toolbars = params.toolbars,
+			toolbarMap = {},
+			handPad = false,
+			current = null,
+			curActiveNode = null,
+			curActiveChildNode = null,
+			fr = new FileReader(),
+			active = false,
+			scrollWrapY = null,
+			scrollWrapX = null,
+			scrollY = null,
+			scrollX = null,
+			toolbarStr = "",
+			isFullScreen = false,
+			fullScreenInterface = wrap.requestFullscreen || wrap.webkitRequestFullscreen || wrap.mozRequestFullScreen || wrap.msRequestFullscreen,
+			cancelFullScreenInterface = document.exitFullscreen || document.webkitCancelFullScreen || document.mozCancelFullScreen;
+
+		var colorInput = null,
+			fileInput = null,
+			textInput = null,
+			mainCanvas = null,
+			bufferCanvas1 = null,
+			bufferCanvas2 = null,
+			bufferCanvas3 = null,
+			bufferCanvas4 = null;
+
+		toolbars.forEach(function(toolbar) {
+			var _childToolbars = childToolbars[toolbar];
+
+			switch(toolbar) {
+				case "handPad":
+
+				break;
+				case "color":
+
+				break;
+				case "clear":
+
+				break;
+				case "export":
+
+				break;
+				default:
+				if(!_childToolbars) {
+					toolbarMap[toolbar] = new vm.module[toolbar]({name: toolbar});
+				} else {
+					_childToolbars.forEach(function(_toolbar) {
+						toolbarMap[_toolbar] = new vm.module[toolbar]({name: _toolbar});
+					});
+				}
+			}
+
+			var _tpl2 = tpl2.replace(/\$ITEM\$/g, !_childToolbars?toolbar:_childToolbars[0])
+							.replace(/\$ICONCLASS\$/g, !_childToolbars?classes[toolbar]:classes[_childToolbars[0]])
+							.replace(/\$TITLE\$/g, !_childToolbars?titles[toolbar]:titles[_childToolbars[0]])
+							.replace(/\$LEVEL\$/g, 0);
+				
+			_tpl2 = _tpl2.replace(/\$CHILDTOOLBARS\$/g, !_childToolbars?"":tpl3);
+
+			if(_childToolbars) {
+				var childToolbarStr = "";
+
+				_childToolbars.forEach(function(toolbar) {
+					childToolbarStr += tpl2.replace(/\$ITEM\$/g, toolbar)
+											.replace(/\$ICONCLASS\$/g, classes[toolbar])
+											.replace(/\$TITLE\$/g, titles[toolbar])
+											.replace(/\$CHILDTOOLBARS\$/g, "")
+											.replace(/\$LEVEL\$/g, 1);
+				});
+
+				_tpl2 = _tpl2.replace(/\$CHILDTOOLBARITEM\$/g, childToolbarStr);
+			}
+			
+			toolbarStr += _tpl2;
+		});
+
+		false!=params.fullScreen && (toolbarStr = toolbarStr + tpl5);
+		var __str__ = tpl1.replace(/\$LAYOUT\$/g, layoutClassMap[params.layout]+(params.vertical?" vertical":"")).replace(/\$TOOLBARS\$/g, toolbarStr).replace(/\$DISABLED\$/g, params.disable?"disabled":"");
+		var _data = params.data || JSON.parse(window.localStorage.getItem(self.id+"_pad"));
+		wrap.innerHTML = __str__;
+		this.toolbarMap = toolbarMap;
+		
+		var	canvasWrap = wrap.getElementsByClassName("can-wrap")[0],
+			toolbarWrap = wrap.getElementsByClassName("toolbar-list")[0],
+			fullScreenBtn = toolbarWrap.getElementsByClassName("full-screen-btn")[0];
+
+		colorInput = wrap.getElementsByClassName("color-input")[0];
+		fileInput = wrap.getElementsByClassName("file-input")[0];
+		textInput = wrap.getElementsByClassName("text-input")[0];
+		mainCanvas = wrap.getElementsByClassName("main-can")[0];
+		scrollWrapX = wrap.getElementsByClassName("scroll-x-wrap")[0];
+		scrollWrapY = wrap.getElementsByClassName("scroll-y-wrap")[0];
+		scrollX = scrollWrapX.getElementsByClassName("scroll-x")[0];
+		scrollY = scrollWrapY.getElementsByClassName("scroll-y")[0];
+		bufferCanvas1 = wrap.getElementsByClassName("buffer-can-1")[0];
+		bufferCanvas2 = wrap.getElementsByClassName("buffer-can-2")[0];
+		bufferCanvas3 = wrap.getElementsByClassName("buffer-can-3")[0];
+		bufferCanvas4 = wrap.getElementsByClassName("buffer-can-4")[0];
+
+		var resizePad = null, isFixedSize = false;
+
+		if(params.size && /\*/.test(params.size)) {
+			var sizeArr = params.size.split(/\*/);
+			isFixedSize = true;
+
+			if(2!=sizeArr.length) {
+				var canvasWrapWidth = canvasWrap.clientWidth, 
+					canvasWrapHeight = canvasWrap.clientHeight;
+			} else {
+				var canvasWrapWidth = isNaN(sizeArr[0])?canvasWrap.clientWidth:sizeArr[0],
+					canvasWrapHeight = isNaN(sizeArr[1])?canvasWrap.clientHeight:sizeArr[1];
+			}
+
+			ele.addEvent(canvasWrap, eventMap["wheel"], function() {
+				var args = [].slice.call(arguments, 0),
+					e = args[0] || window.event;
+
+				canvasWrap.scrollTop = canvasWrap.scrollTop + ("DOMMouseScroll"===e.type?(3===e.detail?100:-100):(e.deltaY));
+				scrollY.style.top = (scrollWrapY.clientHeight - scrollY.offsetHeight)*(canvasWrap.scrollTop/(canvasWrap.scrollHeight - canvasWrap.clientHeight)) + "px";
+
+				if(window.event) {
+					e.returnValue = false;
+					e.cancelBubble = true;
+				} else {
+					e.preventDefault();
+					e.stopPropagation();
+				}
+			});
+
+			scroll.init(scrollX, 0, function(val) {
+				var rect = scrollWrapX.getBoundingClientRect(),
+					moveDest = rect.width - scrollX.offsetWidth,
+					hideWidth = canvasWrap.scrollWidth - canvasWrap.offsetWidth;
+
+				canvasWrap.scrollLeft = val*(hideWidth/moveDest);
+			});
+
+			scroll.init(scrollY, 1, function(val) {
+				var rect = scrollWrapY.getBoundingClientRect(),
+					moveDest = rect.height - scrollY.offsetHeight,
+					hideHeight = canvasWrap.scrollHeight - canvasWrap.offsetHeight;
+
+				canvasWrap.scrollTop = val*(hideHeight/moveDest);
+			});
+
+			resizePad = function() {
+				var canvasWrapWidth = canvasWrap.clientWidth,
+					canvasWrapHeight = canvasWrap.clientHeight;
+
+				if(canvasWrapWidth<params.width) {
+					ele.removeClass(scrollWrapX, "pad-hide");
+					var scrollWidth = canvasWrapWidth - (params.width - canvasWrapWidth);
+					scrollWidth = scrollWidth<10?10:scrollWidth;
+					scrollX.style.width = scrollWidth + "px";
+				} else {
+					ele.addClass(scrollWrapX, "pad-hide");
+				}
+
+				if(canvasWrapHeight<params.height) {
+					ele.removeClass(scrollWrapY, "pad-hide");
+					var scrollHeight = canvasWrapHeight - (params.height - canvasWrapHeight);
+					scrollHeight = scrollHeight<10?10:scrollHeight;
+					scrollY.style.height = scrollHeight + "px";
+				} else {
+					ele.addClass(scrollWrapY, "pad-hide");
+				}
+			};
+		} else {
+			var canvasWrapWidth = canvasWrap.clientWidth, 
+				canvasWrapHeight = canvasWrap.clientHeight;
+
+			resizePad = function() {
+				var canvasWrapWidth = canvasWrap.clientWidth, 
+					canvasWrapHeight = canvasWrap.clientHeight;
+
+				if(canvasWrapWidth!=params.width || canvasWrapHeight!=params.height) {
+					params.width = canvasWrapWidth;
+					params.height = canvasWrapHeight;
+					mainCanvas.width = canvasWrapWidth;
+					mainCanvas.height = canvasWrapHeight;
+					bufferCanvas1.width = canvasWrapWidth;
+					bufferCanvas1.height = canvasWrapHeight;
+					bufferCanvas2.width = canvasWrapWidth;
+					bufferCanvas2.height = canvasWrapHeight;
+					bufferCanvas3.width = canvasWrapWidth;
+					bufferCanvas3.height = canvasWrapHeight;
+					bufferCanvas4.width = canvasWrapWidth;
+					bufferCanvas4.height = canvasWrapHeight;
+
+					self.tab.active.call(self, self.tab.getActive().id);
+				}
+			};
+		}
+		
+		mainCanvas.width = canvasWrapWidth;
+		mainCanvas.height = canvasWrapHeight;
+		bufferCanvas1.width = canvasWrapWidth;
+		bufferCanvas1.height = canvasWrapHeight;
+		bufferCanvas2.width = canvasWrapWidth;
+		bufferCanvas2.height = canvasWrapHeight;
+		bufferCanvas3.width = canvasWrapWidth;
+		bufferCanvas3.height = canvasWrapHeight;
+		bufferCanvas4.width = canvasWrapWidth;
+		bufferCanvas4.height = canvasWrapHeight;
+		params.width = canvasWrapWidth;
+		params.height = canvasWrapHeight;
+		isFixedSize && resizePad();
+
+		ele.addEvent(window, "resize", function() {
+			resizePad();
+		});
+
+		self.tab = new Tab(params.wrap);
+		self.textInput = textInput;
+		self.mouseIconCanvas = bufferCanvas1;
+		self.createImageCanvas = bufferCanvas3;
+		self.fileCanvas = bufferCanvas4;
+		ele.css(mainCanvas, "background", self.params.background);
+		ele.css(bufferCanvas4, "background", self.params.background);
+
+		ele.addEvent(colorInput, "change", function() {
+			self.params.color = this.value;
+		});
+
+		var fullScreen = function(flag) {
+			if(!isMobile) {
+				flag?fullScreenInterface.call(wrap.getElementsByClassName("pad-wrap")[0]):cancelFullScreenInterface.call(document);
+			}else {				
+				flag?ele.addClass(wrap, "pad-full-screen"):ele.removeClass(wrap, "pad-full-screen");
+			}
+
+			isFullScreen = flag;
+			ele.removeClass(fullScreenBtn, isFullScreen?"icon-enlarge":"icon-narrow");
+			ele.addClass(fullScreenBtn, isFullScreen?"icon-narrow":"icon-enlarge");
+			resizePad();
+		};
+
+		var exportImage = function() {
+			var uuid = data.uuid,
+				image = self.mainCanvas.toDataURL().replace(/image\/png/, "image/octet-stream;Content-Disposition:attachment;filename="+uuid+".png"),
+				downloadEle = document.createElement("A");
+
+			downloadEle.download = uuid + ".png";
+			downloadEle.href = image;
+			downloadEle.click();
+		};
+
+		self.pad.resize = function() {
+			resizePad();
+		};
+
+		self.pad.fullScreen = function() {
+			if(isFullScreen) return ;
+			fullScreen(true);
+		};
+
+		self.pad.exitFullScreen = function() {
+			if(!isFullScreen) return ;
+			fullScreen(false);
+		};
+
+		self.pad.showFiles = function(params) {
+			var files = params.files,
+				newTab = params.newTab,
+				isShow = params.isShow,
+				from = void(0)!=params.from?params.from:self.params.id,
+				tabId = params.tabId,
+				tabName = params.tabName,
+				activeTab = self.tab.getActive();
+
+			files = "[object Array]"===toString.call(files)?files:[files];
+
+			var _showFiles = function() {
+				self.pad.clear();
+
+				var pageObj = new Page({
+					data: files, 
+					show: isShow, 
+					that: self,
+					from: from,
+					tabId: newTab?id:activeTab.id
+				});
+
+				self.tab.setPage.call(self, void(0)!=id?id:activeTab.id, pageObj);
+				activeTab.page = pageObj;
+
+				if(self.params.id===from && "[object Function]"===toString.call(self.params.onShowFiles)) {
+					params.from = from;
+					self.params.onShowFiles(params);
+				}
+			};
+
+			if(newTab) {
+				var _tab = {id:tabId, name:tabName};
+				var id = self.tab.build.call(self, bufferCanvas4, 1, null, _tab, from===self.params.id);
+				params.tabId = id;
+
+				if(isShow) {
+					self.tab.active.call(self, id);
+					_showFiles();
+					self.params.onTabChange && self.params.onTabChange(id);
+				}
+			} else {
+				_showFiles();
+			}
+		};
+
+		fr.onload = function(data) {
+			self.toolbarMap.image.renderBuffer.call(self, data.target.result);
+			self.toolbarMap.image.render.call(self, [0, 0]);
+			fileInput.value = "";
+		};
+
+		ele.addEvent(fileInput, "change", function() {
+			fr.readAsDataURL(this.files[0]);
+		});
+
+		ele.addEvent(textInput, "keyup", function() {
+			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event;
+
+			if(13===e.which) {
+				var val = data.trim(this.value);
+				current.render.call(self, val);
+			}
+		});
+
+		ele.addEvent(document, "keydown", function() {
+			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event,
+				which = e.which;
+
+			if(!self.active) return ;
+
+			switch(true) {
+				case 107===which || (187===which && e.shiftKey):
+				current && current.largen && current.largen.call(self);
+				break;
+				case 109===which || (189===which && e.shiftKey):
+				current && current.lesser && current.lesser.call(self);
+				break;
+			}
+		});
+
+		ele.addEvent(toolbarWrap, eventMap["click"], function() {
+			if(params.disable) return ;
+
+			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event,
+				span = e.srcElement || e.target,
+				level = +span.getAttribute("level"),
+				item = span.getAttribute("item");
+
+			if(!item) return ;
+
+			switch(item) {
+				case "handPad":
+				handPad = !handPad;
+				if(handPad) {
+					span.setAttribute("active", "");
+				} else {
+					span.removeAttribute("active");
+				}
+				break;
+				case "color":
+				colorInput.click();
+				break;
+				case "clear":
+				self.tab.clear.call(self);
+				break;
+				case "export":
+				exportImage();
+				break;
+				case "image":
+				fileInput.click();
+				break;
+				case "fullScreen":
+				fullScreen(!isFullScreen);
+				break;
+				default:
+				current = toolbarMap[item] || current;
+				if(!current) return ;
+				self.current = current;
+				current.active();
+
+				if(0===level) {
+					curActiveNode && curActiveNode.removeAttribute("active");
+					curActiveNode = span;
+					var lastSpan = toolbarWrap.getElementsByClassName("selected-item")[0];
+
+					if(span.parentNode!=lastSpan) {
+						ele.removeClass(lastSpan, "selected-item");
+					}
+
+					ele.addClass(span.parentNode, "selected-item");
+				}
+
+				if(1===level) {
+					curActiveChildNode && curActiveChildNode.removeAttribute("active");
+					var parentSpan = ele.preNode(span.parentNode.parentNode);
+					parentSpan.title = span.parentNode.title;
+					parentSpan.className = parentSpan.className.replace(/\bicon-[\w-]+\b/, span.className.match(/\bicon-[\w-]+\b/));
+					parentSpan.setAttribute("item", item);
+					curActiveChildNode = span;
+				}
+
+				span.setAttribute("active", "");
+			}
+
+			if(item) {
+				if(window.event) {
+					e.returnValue = false;
+					e.cancelBubble = true;
+				} else {
+					e.preventDefault();
+					e.stopPropagation();
+				}
+			}
+		});
+
+		ele.addEvent(toolbarWrap, "mousedown", function() {
+			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event;
+
+			if(window.event) {
+				e.returnValue = false;
+				e.cancelBubble = true;
+			} else {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		});
+
+		ele.addEvent(bufferCanvas1, eventMap["move"], function() {
+			if(!current) return ;
+
+			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event,
+				rect = this.getBoundingClientRect(),
+				item = current.name.toLowerCase(),
+				pos = {
+					x: (isMobile?e.targetTouches[0].clientX:e.clientX) - (rect.x || rect.left), 
+					y: (isMobile?e.targetTouches[0].clientY:e.clientY) - (rect.y || rect.top)
+				};
+
+			if(handPad || active) {
+				switch(item) {
+					case "ferula":
+					current.mouseRender.call(self, pos);
+					break;
+					case "circular":
+					case "quadrate":
+					current.mouseRender.call(self, pos);
+					default:
+					current.bufferRender.call(self, pos);
+				}
+			} else {
+				current.mouseRender && current.mouseRender.call(self, pos);
+			}
+
+			if(window.event) {
+				e.returnValue = false;
+				e.cancelBubble = true;
+			} else {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		});
+
+		ele.addEvent(bufferCanvas1, eventMap["down"], function() {
+			var args = [].slice.call(arguments, 0),
+				rect = this.getBoundingClientRect(),
+				lastSpan = toolbarWrap.getElementsByClassName("selected-item")[0],
+				e = args[0] || window.event,
+				pos = {
+					x: (isMobile?e.targetTouches[0].clientX:e.clientX) - (rect.x || rect.left), 
+					y: (isMobile?e.targetTouches[0].clientY:e.clientY) - (rect.y || rect.top)
+				};
+
+			active = true;
+			ele.removeClass(lastSpan, "selected-item");
+			current && current.bufferRender && current.bufferRender.call(self, pos, true);
+
+			if(window.event) {
+				e.returnValue = false;
+				e.cancelBubble = true;
+			} else {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		});
+
+		ele.addEvent(document, eventMap["down"], function() {
+			var lastSpan = toolbarWrap.getElementsByClassName("selected-item")[0];
+			ele.removeClass(lastSpan, "selected-item");
+			self.textInput.removeAttribute("style");
+		});
+
+		ele.addEvent(document, "mouseup", function() {
+			if(active) {
+				active = false;
+				current && current.render && current.render.call(self);
+			}
+		});
+
+		ele.addEvent(bufferCanvas1, eventMap["up"], function() {
+			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event;
+			active = false;
+			current && current.render && current.render.call(self);
+		});
+
+		ele.addEvent(canvasWrap, "mouseleave", function() {
+			bufferCanvas1.width = bufferCanvas1.width;
+		});
+
+		self.bufferCanvas = bufferCanvas2;
+
+		if(!_data) {
+			var _n = self.tab.build.call(self, mainCanvas, 0);
+			self.tab.active.call(self, _n);
+		} else {
+			for(var key in _data) {
+				var val = _data[key];
+				var _n = self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, val.type, val.data, {id: key, name: val.tabName}, val.del);
+
+				if(val.splitPage) {
+					var pageObj = new Page({
+						data: val.data, 
+						show: 0===val.type, 
+						that: self,
+						tabId: _n
+					});
+
+					self.tab.setPage.call(self, _n, pageObj);
+				}
+
+				0===val.type && self.tab.active.call(self, _n);
+			}
+		}
+	}
+
+	window.wPad = {
+		init: function(params) {
+			var _params = data.copy({}, defaultConfig);
+			_params = data.copy(_params, params);
+			var pad = new WPad(_params);
+			void(0)!=_params.id && (padMap[_params.id] = pad);
+			padTab.push(pad);
+			return pad;
+		},
+		getPadById: function(id) {
+			if(void(0)===id) return ;
+			return padMap[id];
+		},
+		getPadByIndex: function(index) {
+			if(void(0)===index) return ;
+			return padTab[index];
+		}
+	};
+}());
