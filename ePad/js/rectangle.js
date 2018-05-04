@@ -1,8 +1,18 @@
+/**
+ *
+ *
+ * date: 2018-03-24
+ * author: Jason
+ * fileName: rectangle.js
+ * describe: 矩形
+ *
+ *
+ */
 ;(function() {
 	"use strict";
 	var modeMap = {
-		rectstroke: 0,
-		rect: 1
+		rectstroke: 0,	//空心矩形
+		rect: 1	//实心矩形
 	};
 
 	function Rectangle(params) {
@@ -15,6 +25,8 @@
 	Rectangle.prototype = {
 		constructor: Rectangle,
 		active: function() {},
+		// 绘制缓存接口，这里是将数据绘制到缓存画板上
+		// status = 0
 		bufferRender: function(data, origin) {
 			var self = this;
 
@@ -32,6 +44,8 @@
 				self.render(data);
 			}
 		},
+		// 绘制最终结果，这里是将数据绘制到持久画板上
+		// status = 1
 		render: function() {
 			var self = this, data = self.current.interimBuffer.shift();
 			if(!data) return ;

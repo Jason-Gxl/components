@@ -1,3 +1,13 @@
+/**
+ *
+ *
+ * date: 2018-03-24
+ * author: Jason
+ * fileName: pen.js
+ * describe: 笔
+ *
+ *
+ */
 ;(function() {
 	"use strict";
 
@@ -10,6 +20,8 @@
 	Pen.prototype = {
 		constructor: Pen,
 		active: function() {},
+		// 绘制缓存接口，这里是将数据绘制到缓存画板上
+		// status = 0
 		bufferRender: function(_data, origin) {
 			var self = this,
 				data = !!origin?{type: "pen", data: [], status: 0, origin: !!origin, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height}:self.current.interimBuffer.pop();
@@ -17,6 +29,8 @@
 			self.current.interimBuffer.push(data);
 			self.render(data);
 		},
+		// 绘制最终结果，这里是将数据绘制到持久画板上
+		// status = 1
 		render: function() {
 			var self = this, data = self.current.interimBuffer.shift();
 			if(!data) return ;

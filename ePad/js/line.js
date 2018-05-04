@@ -1,8 +1,18 @@
+/**
+ *
+ *
+ * date: 2018-03-24
+ * author: Jason
+ * fileName: line.js
+ * describe: 线性
+ *
+ *
+ */
 ;(function() {
 	"use strict";
 	var modeMap = {
-		line: 0,
-		arrow: 1
+		line: 0,	//直线
+		arrow: 1	//箭头
 	};
 
 	function Line(params) {
@@ -15,6 +25,8 @@
 	Line.prototype = {
 		constructor: Line,
 		active: function() {},
+		// 绘制缓存接口，这里是将数据绘制到缓存画板上
+		// status = 0
 		bufferRender: function(data, origin) {
 			var self = this;
 
@@ -35,6 +47,8 @@
 				self.render(data);
 			}
 		},
+		// 绘制最终结果，这里是将数据绘制到持久画板上
+		// status = 1
 		render: function() {
 			var self = this, data = self.current.interimBuffer.shift();
 			if(!data) return ;

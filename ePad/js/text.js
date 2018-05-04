@@ -1,3 +1,13 @@
+/**
+ *
+ *
+ * date: 2018-03-24
+ * author: Jason
+ * fileName: text.js
+ * describe: 文本
+ *
+ *
+ */
 ;(function() {
 	"use strict";
 
@@ -11,6 +21,8 @@
 	Text.prototype = {
 		constructor: Text,
 		active: function() {},
+		// 绘制缓存接口，这里是将数据绘制到缓存画板上
+		// status = 0
 		bufferRender: function(data, origin) {
 			var self = this;
 
@@ -24,6 +36,8 @@
 				self.current.interimBuffer.push(data);
 			}
 		},
+		// 绘制最终结果，这里是将数据绘制到持久画板上
+		// status = 1
 		render: function(content) {
 			if("[object String]"!=Object.prototype.toString.call(content)) return ;
 			content = content.replace(/^\s*|\s*$/, "");

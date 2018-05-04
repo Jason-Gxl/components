@@ -50,7 +50,7 @@ module.exports = {
 	host: "china.dev.com",	//域名
 	port: 3000,	//端口
 	pagePath: "./",	//从哪里开始找页面
-	homePage: "index.html",	//首页面
+	homePage: "./demo/index.html",	//首页面
 	//proxy: "china.dev.com:8080",	//代理
 	browser: ["chrome"]    //[object Array]  可选项"chrome", "firefox", "explorer"
 };

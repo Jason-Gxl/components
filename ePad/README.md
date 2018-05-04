@@ -89,5 +89,6 @@ pad.render(data);
 |removeTab|移除白板下面的某个tab，需要传入一个tab的唯一标识|
 |resize|手动触发白板大小变化，白板内容会重绘|
 |fullScreen|全屏|
+|cleanCache|清除缓存|
 |exitFullScreen|退出全屏|
-|showFiles|演示文档，参数：<br\>{<br\>files: [],  //文件list<br\> newTab: true,  //生成一个新的tab<br\> isShow: true,  //立刻激活新tab<br\> from: "",   //由谁演示的文档<br\> tabId: "",  tab的唯一标识，可以不传<br\> tabName: "文档"   //tab名，可以不传<br\>}|
+|showFiles|演示文档，参数：<br\>{<br\>files: [],  //文件list<br\> newTab: true,  //生成一个新的tab<br\> isShow: true,  //立刻激活新tab<br\> from: "",   //由谁演示的文档<br\> tabId: "",  tab的唯一标识，可以不传<br\> tabName: "文档"   //tab名，可以不传<br\> original: true	//表示文档不压缩<br\>}|

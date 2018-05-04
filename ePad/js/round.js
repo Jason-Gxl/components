@@ -1,11 +1,21 @@
+/**
+ *
+ *
+ * date: 2018-03-24
+ * author: Jason
+ * fileName: round.js
+ * describe: 圆
+ *
+ *
+ */
 ;(function() {
 	"use strict";
 
 	var modeMap = {
-		circle: 0,
-		roundel: 1,
-		ellipesstroke: 2,
-		ellipes: 3
+		circle: 0,	//空心圆
+		roundel: 1,	//实心圆
+		ellipesstroke: 2,	//空心椭圆
+		ellipes: 3	//实心椭圆
 	};
 
 	function Round(params) {
@@ -18,6 +28,8 @@
 	Round.prototype = {
 		constructor: Round,
 		active: function() {},
+		// 绘制缓存接口，这里是将数据绘制到缓存画板上
+		// status = 0
 		bufferRender: function(data, origin) {
 			var self = this;
 
@@ -49,6 +61,8 @@
 				self.render(data);
 			}
 		},
+		// 绘制最终结果，这里是将数据绘制到持久画板上
+		// status = 1
 		render: function() {
 			var self = this, data = self.current.interimBuffer.shift();
 			if(!data) return ;

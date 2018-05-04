@@ -7,6 +7,7 @@
 		padTab = [],
 		isMobile = /(\bmobile\b|\bandroid\b)/i.test(navigator.userAgent),
 		isFireFox = /\bfirefox\b/i.test(navigator.userAgent),
+		// 事件名map，PC端和移动端需要对应不同的事件名
 		eventMap = {
 			click: isMobile?"touchend":"click",
 			down: isMobile?"touchstart":"mousedown",
@@ -14,12 +15,15 @@
 			up: isMobile?"touchend":"mouseup",
 			wheel: isFireFox?"DOMMouseScroll":"mousewheel"
 		},
+		// 工具栏不同的布局对应的className
 		layoutClassMap = {
 			leftTop: "left-top",
 			rightTop: "right-top",
 			rightBottom: "right-bottom",
 			leftBottom: "left-bottom"
 		},
+		// 默认的白板初始化参数
+		// ferula, ellipesstroke, rectstroke, pen, eraser, rect, ellipes, text, line, arrow, color, export, scissors, clear, enlarge, file, handPad
 		defaultConfig = {
 			layout: "leftTop",
 			size: "100%",
@@ -33,7 +37,6 @@
 			eraserSize: 5,
 			ferulaSize: 5,
 			toolbars: isMobile?["pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear"]:["ferula", "pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear", "color"]
-			//toolbars: ["ferula", "ellipesstroke", "rectstroke", "pen", "eraser", "rect", "ellipes", "text", "line", "arrow", "color", "export", "scissors", "clear", "enlarge", "file", "handPad"]
 		},
 		childToolbars = {
 			rectangle: ["rectstroke", "rect"],
@@ -41,6 +44,7 @@
 			round: ["circle", "roundel", "ellipesstroke", "ellipes"],
 			eraser: ["circular", "quadrate"]
 		},
+		// 不同工具对应的名称
 		titles = {
 			ferula: "教鞭",
 			circle: "空心圆",
@@ -61,6 +65,7 @@
 			clear: "清空",
 			image: "图片"
 		},
+		// 不同工具对应的icon的className
 		classes = {
 			ferula: "icon-teach-rod",
 			circle: "icon-round-a",
@@ -81,15 +86,17 @@
 			clear: "icon-empty",
 			image: "icon-pic"
 		},
+		// 白板tab的默认名称
 		tabNameMap = {
 			0: "白板",
 			1: "文档演示"
 		};
 
+// ==============================================================模板===============================================================
 	var tpl1 = '\
-		<div class="pad-wrap $LAYOUT$ $DISABLED$">\
+		<div class="pad-wrap @LAYOUT@ @DISABLED@">\
 			<div class="toolbar-wrap">\
-				<ul class="toolbar-list">$TOOLBARS$</ul>\
+				<ul class="toolbar-list">@TOOLBARS@</ul>\
 			</div>\
 			<div class="can-wrap-outer">\
 				<div class="can-wrap">\
@@ -111,32 +118,38 @@
 			<input type="color" class="color-input tool-input"/>\
 		</div>';
 
-	var tpl2 = '<li class="toolbar-item" title="$TITLE$"><span class="item-icon iconfont $ICONCLASS$" item="$ITEM$" level="$LEVEL$"></span>$CHILDTOOLBARS$</li>';
+	var tpl2 = '<li class="toolbar-item" title="@TITLE@"><span class="item-icon iconfont @ICONCLASS@" item="@ITEM@" level="@LEVEL@"></span>@CHILDTOOLBARS@</li>';
 
-	var tpl3 = '<ul class="child-toolbar-list">$CHILDTOOLBARITEM$</ul>';
+	var tpl3 = '<ul class="child-toolbar-list">@CHILDTOOLBARITEM@</ul>';
 
 	var tpl4 = '\
 		<div>\
 			<a href="javascript:void(0);" class="pre-page-btn iconfont icon-zuofanye"></a>\
 			<a href="javascript:void(0);" class="next-page-btn iconfont icon-youfanye"></a>\
-			<span><input type="text" class="page-number-input"/>/$TOTAL$<a href="javascript:void(0);" class="go-page-btn">GO</a></span>\
+			<span><input type="text" class="page-number-input"/>/@TOTAL@<a href="javascript:void(0);" class="go-page-btn">GO</a></span>\
 		</div>';
 
 	var tpl5 = '<li class="toolbar-item full-screen-btn-wrap"><span class="item-icon full-screen-btn iconfont icon-enlarge" item="fullScreen"></span></li>';
+// ==============================================================模板===============================================================
 
 	vm.module = vm.module || {};
 
+	// 这里创建一个ele对象，此对象下都是对dom节点进行操作的接口
+	// 目地是方便后面的调用
 	var ele = {
+		// 对dom节点绑定事件
 		addEvent: window.addEventListener?function(target, type, fn, use) {
 			target.addEventListener(type, fn, use||false);
 		}:function(target, type, fn) {
 			target.attachEvent("on"+type, fn);
 		},
+		// 移除dom节点上的事件
 		delEvent: window.addEventListener?function(target, type, fn, use) {
 			target.removeEventListener(type, fn, use||false);
 		}:function(target, type, fn) {
 			target.detachEvent("on"+type, fn);
 		},
+		// 为dom节点添加一个指定的类名
 		addClass: function(ele, className) {
 			if(ele===void(0) || className===void(0)) return ;
 			var reg = new RegExp("\\b"+className+"\\b", "g");
@@ -145,6 +158,7 @@
 				ele.className = ele.className + " " + className;
 			}
 		},
+		// 移除dom节点上指定的类名
 		removeClass: function(ele, className) {
 			if(ele===void(0) || className===void(0)) return ;
 			var reg = new RegExp("\\b"+className+"\\b", "g");
@@ -153,17 +167,22 @@
 				ele.className = ele.className.replace(reg, "");
 			}
 		},
+		// 获取指定dom节点的前一个节点
 		preNode: function(ele) {
 			return ele.previousElementSibling || ele.previousSibling;
 		},
+		// 获取指定dom节点的下一个节点
 		nextNode: function(ele) {
 			return ele.nextElementSibling || ele.nextSibling;
 		},
+		// 为dom节点添加样式
 		css: function(ele, attrName, attrValue) {
 			ele.style[attrName] = attrValue || "";
 		}
 	};
 
+	// 滚动条模块
+	// 如果创建白板时，为白板指定了固定大小，且白板大小大于当前放置白板的容器时会创建滚动条
 	var scroll = (function() {
 		var moveEvent = function() {
 			var args = [].slice.call(arguments, 0),
@@ -186,6 +205,7 @@
 		};
 
 		return {
+			// 创建滚动条接口
 			init: function(node, type, callback) {
 				ele.addEvent(node, eventMap["down"], function() {
 					var args = [].slice.call(arguments, 0),
@@ -207,12 +227,17 @@
 		};
 	}());
 
+	// 数据对象
+	// 这里是对所有进行数据处理的接口进行了归总
 	var data = {
+		// 生成uuid
 		get uuid() {
 			var len = 20, str = ""
 			for(;str.length<len;str+=Math.random().toString().substr(2));
 			return str.substr(0, len);
 		},
+		// 对白板数进行缩放
+		// 主要应对白板的缩放后的重绘及从一个白板传递到另一个白板的数据
 		scale: function(_data) {
 			var that = this,
 				val = _data,
@@ -252,6 +277,7 @@
 				if(val.data[3]) val.data[3] = !isNaN(val.data[3])?val.data[3] * scaleWidth:val.data[3];
 			}
 		},
+		// 数据深拷贝
 		copy: function() {
 			var args = [].slice.call(arguments, 0),
 				firstArg = args.shift(),
@@ -352,6 +378,8 @@
 				return container;
 			}
 		},
+		// 将白板数据生成图片数据
+		// 此接口应对的是用户在白板上多次操作产生很多数据，由于数据是存储在storage中，数据量不宜过多，所以会在操作过程中把适量的数据生成图片数据进行存储
 		saveAsImage: function(_data, type) {
 			var self = this,
 				count = 0,
@@ -418,10 +446,12 @@
 				}
 			}
 		},
+		// 清除文本头尾的空格
 		trim: function(content) {
 			if(!content || "[object String]"!=toString.call(content)) return ;
 			return content.replace(/^\s*|\s*$/, "");
 		},
+		// 数据分页
 		splitPage: function(_data) {
 			var obj = {},
 				keys = [],
@@ -440,6 +470,7 @@
 				keys.push(key);
 			}
 
+			// 对页码进行排序
 			keys.sort();
 
 			keys.forEach(function(key) {
@@ -448,6 +479,8 @@
 
 			return list;
 		},
+		// 向白板绘制pen模块传递过来的数据
+		// isCreateImage是boolean值,只有在saveAsImage中调用些接口时才为true
 		renderPen: function(params, callback, isCreateImage) {
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
@@ -480,6 +513,8 @@
 			ctx.restore();
 			callback && callback();
 		},
+		// 向白板绘制rect模块传递过来的数据
+		// isCreateImage是boolean值,只有在saveAsImage中调用些接口时才为true
 		renderRect: function(params, callback, isCreateImage) {
 			var self = this,
 				mode = params.mode,
@@ -511,6 +546,8 @@
 			ctx.restore();
 			callback && callback();
 		},
+		// 向白板绘制line模块传递过来的数据
+		// isCreateImage是boolean值,只有在saveAsImage中调用些接口时才为true
 		renderLine: function(params, callback, isCreateImage) {
 			var self = this,
 				mode = params.mode,
@@ -553,6 +590,8 @@
 			ctx.restore();
 			callback && callback();
 		},
+		// 向白板绘制round模块传递过来的数据
+		// isCreateImage是boolean值,只有在saveAsImage中调用些接口时才为true
 		renderRound: function(params, callback, isCreateImage) {
 			var self = this,
 				mode = params.mode,
@@ -610,6 +649,8 @@
 			ctx.restore();
 			callback && callback();
 		},
+		// 向白板绘制text模块传递过来的数据
+		// isCreateImage是boolean值,只有在saveAsImage中调用些接口时才为true
 		renderText: function(params, callback, isCreateImage) {
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
@@ -632,9 +673,11 @@
 			ctx.restore();
 			callback && callback();
 		},
+		// 向白板绘制image模块传递过来的数据
+		// isCreateImage是boolean值,只有在saveAsImage中调用些接口时才为true
 		renderImage: function(params, callback, isCreateImage) {
 			var self = this,
-				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
+				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:("file"===params.type?self.fileCanvas:self.mainCanvas)),
 				data = params.data,
 				img = new Image(),
 				ctx = canvas.getContext("2d");
@@ -653,26 +696,42 @@
 
 				if(dw>=0 && dh>=0) {
 					var x = dw/2, y = dh/2;
-					ctx.drawImage(img, dw/2, dh/2);
+					ctx.drawImage(img, x, y);
 					params.fileWidth = imgWidth;
 					params.fileHeight = imgHeight;
 					data[1] = x;
 					data[2] = y;
 				} else {
-					var cwhp = cw/ch, iwhp = img.width/img.height;
+					if(!params.original) {
+						var cwhp = cw/ch, iwhp = img.width/img.height;
 
-					if(cwhp>iwhp) {
-						ctx.drawImage(img, (cw-ch*iwhp)/2, 0, ch*iwhp, ch);
-						params.fileWidth = ch*iwhp;
-						params.fileHeight = ch;
-						data[1] = (cw-ch*iwhp)/2;
-						data[2] = 0;
+						if(cwhp>iwhp) {
+							ctx.drawImage(img, (cw-ch*iwhp)/2, 0, ch*iwhp, ch);
+							params.fileWidth = ch*iwhp;
+							params.fileHeight = ch;
+							data[1] = (cw-ch*iwhp)/2;
+							data[2] = 0;
+						} else {
+							ctx.drawImage(img, 0, (ch-cw/iwhp)/2, cw, cw/iwhp);
+							params.fileWidth = cw;
+							params.fileHeight = cw/iwhp;
+							data[1] = 0;
+							data[2] = (ch-cw/iwhp)/2;
+						}
 					} else {
-						ctx.drawImage(img, 0, (ch-cw/iwhp)/2, cw, cw/iwhp);
-						params.fileWidth = cw;
-						params.fileHeight = cw/iwhp;
-						data[1] = 0;
-						data[2] = (ch-cw/iwhp)/2;
+						cw = cw>imgWidth?cw:imgWidth;
+						ch = ch>imgHeight?ch:imgHeight;
+						dw = cw - imgWidth, 
+						dh = ch - imgHeight;
+						var x = dw/2, y = dh/2;
+						canvas.width = cw;
+						canvas.height = ch;
+						params.fileWidth = imgWidth;
+						params.fileHeight = imgHeight;
+						data[1] = x;
+						data[2] = y;
+						self.tab.resizePad(cw, ch);
+						ctx.drawImage(img, x, y);
 					}
 				}
 
@@ -680,6 +739,8 @@
 				callback && callback();
 			};
 		},
+		// 向白板绘制eraser模块传递过来的数据
+		// isCreateImage是boolean值,只有在saveAsImage中调用些接口时才为true
 		delete: function(params, callback, isCreateImage) {
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
@@ -694,39 +755,68 @@
 			} else {
 				self.bufferCanvas.width = self.bufferCanvas.width;
 			}
-			
-			ctx.strokeStyle = self.params.background;
-			ctx.fillStyle = self.params.background;
 
-			if(0===params.mode) {
-				ctx.lineJoin = "round";
-				ctx.lineCap = "round";
-			} else {
-				ctx.lineCap = "square";
-				ctx.lineJoin = "bevel";
-			}
+			data.forEach(function(data) {
+				if(0===params.mode) {
+					var sin = data.size/2*Math.sin(Math.atan((data.y - data.ey)/(data.x - data.ex))),
+				    	cos = data.size/2*Math.cos(Math.atan((data.y - data.ey)/(data.x - data.ex)));
 
-			ctx.save();
-			ctx.scale(scale, scale);
+				    var x1 = data.ex + sin;
+				    var y1 = data.ey - cos;
+				    var x2 = data.ex - sin;
+				    var y2 = data.ey + cos;
+				    var x3 = data.x + sin;
+				    var y3 = data.y - cos;
+				    var x4 = data.x - sin;
+				    var y4 = data.y + cos;
 
-			data.forEach(function(point, index) {
-				ctx.lineWidth = point.size;
+				    ctx.save();
+				    ctx.scale(scale, scale);
+		        	ctx.beginPath();
+		        	ctx.arc(data.x, data.y, data.size/2, 0, 2*Math.PI);
+		        	ctx.clip();
+		        	ctx.clearRect(0, 0, self.params.width, self.params.height);
+		        	ctx.restore();
+				} else {
+					var x1 = data.ex - data.size/2;
+				    var y1 = data.ey - data.size/2;
+				    var x2 = data.ex - data.size/2;
+				    var y2 = data.ey + data.size/2;
+				    var x3 = data.x + data.size/2;
+				    var y3 = data.y - data.size/2;
+				    var x4 = data.x - data.size/2;
+				    var y4 = data.y + data.size/2;
 
-				if(0===index) {
-					ctx.beginPath();
-					ctx.moveTo(point.x, point.y);
+				    ctx.save();
+				    ctx.scale(scale, scale);
+		        	ctx.beginPath();
+		        	ctx.rect(x1, y1, data.size, data.size);
+		        	ctx.clip();
+		        	ctx.clearRect(0, 0, self.params.width, self.params.height);
+		        	ctx.restore();
 				}
-
-				ctx.lineTo(point.x, point.y);
+				
+				ctx.save();
+				ctx.scale(scale, scale);
+				ctx.beginPath();
+				ctx.moveTo(x1, y1);
+	        	ctx.lineTo(x2, y2);
+	        	ctx.lineTo(x3, y3);
+	        	ctx.lineTo(x4, y4);
+	        	ctx.closePath();
+	        	ctx.clip()
+	        	ctx.clearRect(0, 0, self.params.width, self.params.height);
+	        	ctx.restore();
 			});
-
-			ctx.stroke();
-			ctx.restore();
+			
 			callback && callback();
 		},
+		// 总的绘制接口
+		// isCreateImage是boolean值,只有在saveAsImage中调用些接口时才为true
 		render: function(_data, callback, isCreateImage) {
 			var self = this, type = _data.type;
 
+			// 根据type调用相对应功能的render接口
 			switch(type) {
 				case "pen":
 				data.renderPen.call(self, _data, callback, isCreateImage);
@@ -755,7 +845,9 @@
 		}
 	};
 
+	// 鼠标的绘制对象
 	var mouse = {
+		// 橡皮擦
 		eraser: function(params) {
 			var self = this,
 				canvas = self.mouseIconCanvas,
@@ -780,6 +872,7 @@
 				ctx.stroke();
 			}
 		},
+		// 教鞭
 		ferula: function(params) {
 			var self = this,
 				canvas = self.mouseIconCanvas,
@@ -797,23 +890,26 @@
 			ctx.arc(data[0], data[1], ferulaSize, 0, 2*Math.PI);
 			ctx.fill();
 		},
+		// 总的render接口
+		// 根据type调用mouse[type]
 		render: function(_data) {
 			var self = this, type = _data.type;
 			mouse[type] && mouse[type].call(self, _data);
 		}
 	};
 
+	// 白板的tab模块
 	var Tab = (function() {
 		var UL = document.createElement("UL"),
-			tabTpl = '<li class="pad-tab-item" title="$LABEL$">$LABEL$$DELETEBTN$</li>',
+			tabTpl = '<li class="pad-tab-item" title="@LABEL@">@LABEL@@DELETEBTN@</li>',
 			delTpl = '<i class="iconfont icon-close"></i>';
 
 		function _tab(wrap) {
 			var self = this,
-				tabMap = {},
-				dataMap = {},
-				canvasMap = {},
-				activeObj = {},
+				tabMap = {},	// 创建的所有tab生成的map,key是tab的唯一标识
+				dataMap = {},	// 所有tab对应的数据生成的map,key是tab的唯一标识
+				canvasMap = {},	// 所有tab对应的画面生成的map,key是tab的唯一标识
+				activeObj = {},	// 目前被激活的画布,数据,tab生成的对象
 				idList = [],
 				saving = false,
 				pageMap = {},
@@ -823,7 +919,7 @@
 				if(!canvas) return ;
 				var that = this,
 					_id = _tab && _tab.id?_tab.id:(0===type?0:data.uuid),
-					_tabTpl = tabTpl.replace(/\$LABEL\$/g, _tab && _tab.name?_tab.name:tabNameMap[type]).replace(/\$DELETEBTN\$/g, del?delTpl:"");
+					_tabTpl = tabTpl.replace(/@LABEL@/g, _tab && _tab.name?_tab.name:tabNameMap[type]).replace(/@DELETEBTN@/g, del?delTpl:"");
 
 				UL.innerHTML = _tabTpl;
 				idList.push(_id);
@@ -867,7 +963,6 @@
 				};
 
 				if(_tab && _tab.name) that.container[_id].tabName = _tab.name;
-
 				return _id;
 			};
 
@@ -929,15 +1024,17 @@
 
 			self.active = function(_id) {
 				var self = this, _data = dataMap[_id];
-
-				if(activeObj.canvas) {
-					ele.css(activeObj.canvas, "zIndex");
-					ele.removeClass(activeObj.tab, "active");
-				}
+				ele.removeClass(activeObj.tab, "active");
+				self.tab.resizePad();
 
 				if(activeObj.page) {
 					activeObj.page.hide();
 					delete activeObj.page;
+				}
+
+				if(self.container[_id].type != activeObj.type) {
+					ele.css(activeObj.canvas || self.mainCanvas, "background");
+					ele.css(canvasMap[_id], "background", self.params.background);
 				}
 
 				activeObj.tab = tabMap[_id];
@@ -946,8 +1043,7 @@
 				activeObj.id = _id;
 				activeObj.type = self.container[_id].type;
 				activeObj.page = pageMap[_id];
-				self.mainCanvas = activeObj.canvas;
-				ele.css(activeObj.canvas, "zIndex", 2);
+
 				ele.addClass(activeObj.tab, "active");
 				activeObj.page && activeObj.page.show();
 
@@ -987,6 +1083,7 @@
 					} else {
 						activeObj.data.length = 0;
 						activeObj.canvas.width = activeObj.canvas.width;
+						"[object Function]"===toString.call(self.params.onClear) && self.params.onClear({tabId: activeObj.id});
 					}
 				} else {
 					var id = params.tabId;
@@ -1000,6 +1097,11 @@
 				}
 
 				window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
+			};
+
+			self.cleanCache = function() {
+				var self = this;
+				window.localStorage.removeItem(self.id+"_pad");
 			};
 
 			self.setPage = function(id, page) {
@@ -1035,7 +1137,7 @@
 			div = document.createElement("DIV"),
 			pageWrap = that.params.wrap.getElementsByClassName("split-page-wrap")[0];
 
-		div.innerHTML = tpl4.replace(/\$TOTAL\$/g, total);
+		div.innerHTML = tpl4.replace(/@TOTAL@/g, total);
 		var pageEle = div.removeChild(div.firstElementChild || div.firstChild),
 			prePageBtn = pageEle.getElementsByClassName("pre-page-btn")[0],
 			nextPageBtn = pageEle.getElementsByClassName("next-page-btn")[0],
@@ -1056,6 +1158,14 @@
 			if(that.params.disable) return ;
 			var pageNumber = pageNumberInput.value;
 			self.go(pageNumber);
+		});
+
+		ele.addEvent(pageNumberInput, "input", function() {
+			if(/^\s*([0-9]+).*\s*$/.test(this.value)) {
+				this.value = RegExp.$1;
+			} else {
+				this.value = currentPage;
+			}
 		});
 
 		this.pre = function() {
@@ -1159,7 +1269,8 @@
 					height: that.params.height,
 					status: 1,
 					type: "file",
-					from: params.from
+					from: params.from,
+					original: params.original
 				}];
 			}
 		});
@@ -1245,8 +1356,6 @@
 						params.onRender(obj);
 					}
 				});
-				_data.width = that.mainCanvas.width;
-				_data.height = that.mainCanvas.height;
 
 				if(_data.status) {
 					var activeTab = that.tab.getActive();
@@ -1260,8 +1369,8 @@
 			},
 			mouseRender: function(_data) {
 				mouse.render.call(that, _data);
-				_data.width = that.mainCanvas.width;
-				_data.height = that.mainCanvas.height;
+				_data.width = that.params.width;
+				_data.height = that.params.height;
 
 				if(params.onMousemove) {
 					var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
@@ -1456,32 +1565,32 @@
 				}
 			}
 
-			var _tpl2 = tpl2.replace(/\$ITEM\$/g, !_childToolbars?toolbar:_childToolbars[0])
-							.replace(/\$ICONCLASS\$/g, !_childToolbars?classes[toolbar]:classes[_childToolbars[0]])
-							.replace(/\$TITLE\$/g, !_childToolbars?titles[toolbar]:titles[_childToolbars[0]])
-							.replace(/\$LEVEL\$/g, 0);
+			var _tpl2 = tpl2.replace(/@ITEM@/g, !_childToolbars?toolbar:_childToolbars[0])
+							.replace(/@ICONCLASS@/g, !_childToolbars?classes[toolbar]:classes[_childToolbars[0]])
+							.replace(/@TITLE@/g, !_childToolbars?titles[toolbar]:titles[_childToolbars[0]])
+							.replace(/@LEVEL@/g, 0);
 				
-			_tpl2 = _tpl2.replace(/\$CHILDTOOLBARS\$/g, !_childToolbars?"":tpl3);
+			_tpl2 = _tpl2.replace(/@CHILDTOOLBARS@/g, !_childToolbars?"":tpl3);
 
 			if(_childToolbars) {
 				var childToolbarStr = "";
 
 				_childToolbars.forEach(function(toolbar) {
-					childToolbarStr += tpl2.replace(/\$ITEM\$/g, toolbar)
-											.replace(/\$ICONCLASS\$/g, classes[toolbar])
-											.replace(/\$TITLE\$/g, titles[toolbar])
-											.replace(/\$CHILDTOOLBARS\$/g, "")
-											.replace(/\$LEVEL\$/g, 1);
+					childToolbarStr += tpl2.replace(/@ITEM@/g, toolbar)
+											.replace(/@ICONCLASS@/g, classes[toolbar])
+											.replace(/@TITLE@/g, titles[toolbar])
+											.replace(/@CHILDTOOLBARS@/g, "")
+											.replace(/@LEVEL@/g, 1);
 				});
 
-				_tpl2 = _tpl2.replace(/\$CHILDTOOLBARITEM\$/g, childToolbarStr);
+				_tpl2 = _tpl2.replace(/@CHILDTOOLBARITEM@/g, childToolbarStr);
 			}
 			
 			toolbarStr += _tpl2;
 		});
 
 		false!=params.fullScreen && (toolbarStr = toolbarStr + tpl5);
-		var __str__ = tpl1.replace(/\$LAYOUT\$/g, layoutClassMap[params.layout]+(params.vertical?" vertical":"")).replace(/\$TOOLBARS\$/g, toolbarStr).replace(/\$DISABLED\$/g, params.disable?"disabled":"");
+		var __str__ = tpl1.replace(/@LAYOUT@/g, layoutClassMap[params.layout]+(params.vertical?" vertical":"")).replace(/@TOOLBARS@/g, toolbarStr).replace(/@DISABLED@/g, params.disable?"disabled":"");
 		var _data = params.data || JSON.parse(window.localStorage.getItem(self.id+"_pad"));
 		wrap.innerHTML = __str__;
 		this.toolbarMap = toolbarMap;
@@ -1503,126 +1612,142 @@
 		bufferCanvas3 = wrap.getElementsByClassName("buffer-can-3")[0];
 		bufferCanvas4 = wrap.getElementsByClassName("buffer-can-4")[0];
 
-		var resizePad = null, isFixedSize = false;
+		var createSize = function() {
+			var canvasWrapWidth = canvasWrap.clientWidth, canvasWrapHeight = canvasWrap.clientHeight;
 
-		if(params.size && /\*/.test(params.size)) {
-			var sizeArr = params.size.split(/\*/);
-			isFixedSize = true;
+			if(params.size) {
+				if(/^(\s*\d+\s*)\*(\s*\d+\s*)$/.test(params.size)) {
+					var sizeArr = params.size.split(/\*/);
 
-			if(2!=sizeArr.length) {
-				var canvasWrapWidth = canvasWrap.clientWidth, 
-					canvasWrapHeight = canvasWrap.clientHeight;
-			} else {
-				var canvasWrapWidth = isNaN(sizeArr[0])?canvasWrap.clientWidth:sizeArr[0],
-					canvasWrapHeight = isNaN(sizeArr[1])?canvasWrap.clientHeight:sizeArr[1];
+					canvasWrapWidth = +sizeArr[0];
+					canvasWrapHeight = +sizeArr[1];
+				}
+
+				if(/^(\s*\d+\s*):(\s*\d+\s*)$/.test(params.size)) {
+					var scaleArr = params.size.split(/\:/),
+						_canvasWrapWidth = canvasWrap.clientWidth,
+						_canvasWrapHeight = canvasWrap.clientHeight;
+
+					switch(true) {
+						case scaleArr[0]/scaleArr[1]>_canvasWrapWidth/_canvasWrapHeight:
+						canvasWrapWidth = _canvasWrapHeight/scaleArr[1]*scaleArr[0];
+						canvasWrapHeight = _canvasWrapHeight;
+						break;
+						case scaleArr[0]/scaleArr[1]<_canvasWrapWidth/_canvasWrapHeight:
+						canvasWrapWidth = _canvasWrapWidth;
+						canvasWrapHeight = _canvasWrapWidth/scaleArr[0]*scaleArr[1];
+						break;
+						default:
+						canvasWrapWidth = _canvasWrapWidth;
+						canvasWrapHeight = _canvasWrapHeight;
+					}
+				}
 			}
 
-			ele.addEvent(canvasWrap, eventMap["wheel"], function() {
-				var args = [].slice.call(arguments, 0),
-					e = args[0] || window.event;
+			params.width = canvasWrapWidth;
+			params.height = canvasWrapHeight;
+		};
 
-				canvasWrap.scrollTop = canvasWrap.scrollTop + ("DOMMouseScroll"===e.type?(3===e.detail?100:-100):(e.deltaY));
-				scrollY.style.top = (scrollWrapY.clientHeight - scrollY.offsetHeight)*(canvasWrap.scrollTop/(canvasWrap.scrollHeight - canvasWrap.clientHeight)) + "px";
+		ele.addEvent(canvasWrap, eventMap["wheel"], function() {
+			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event;
 
-				if(window.event) {
-					e.returnValue = false;
-					e.cancelBubble = true;
-				} else {
-					e.preventDefault();
-					e.stopPropagation();
-				}
-			});
+			canvasWrap.scrollTop = canvasWrap.scrollTop + ("DOMMouseScroll"===e.type?(3===e.detail?100:-100):(e.deltaY));
+			scrollY.style.top = (scrollWrapY.clientHeight - scrollY.offsetHeight)*(canvasWrap.scrollTop/(canvasWrap.scrollHeight - canvasWrap.clientHeight)) + "px";
 
-			scroll.init(scrollX, 0, function(val) {
-				var rect = scrollWrapX.getBoundingClientRect(),
-					moveDest = rect.width - scrollX.offsetWidth,
-					hideWidth = canvasWrap.scrollWidth - canvasWrap.offsetWidth;
+			if(window.event) {
+				e.returnValue = false;
+				e.cancelBubble = true;
+			} else {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		});
 
-				canvasWrap.scrollLeft = val*(hideWidth/moveDest);
-			});
+		scroll.init(scrollX, 0, function(val) {
+			var rect = scrollWrapX.getBoundingClientRect(),
+				moveDest = rect.width - scrollX.offsetWidth,
+				hideWidth = canvasWrap.scrollWidth - canvasWrap.offsetWidth;
 
-			scroll.init(scrollY, 1, function(val) {
-				var rect = scrollWrapY.getBoundingClientRect(),
-					moveDest = rect.height - scrollY.offsetHeight,
-					hideHeight = canvasWrap.scrollHeight - canvasWrap.offsetHeight;
+			canvasWrap.scrollLeft = val*(hideWidth/moveDest);
+		});
 
-				canvasWrap.scrollTop = val*(hideHeight/moveDest);
-			});
+		scroll.init(scrollY, 1, function(val) {
+			var rect = scrollWrapY.getBoundingClientRect(),
+				moveDest = rect.height - scrollY.offsetHeight,
+				hideHeight = canvasWrap.scrollHeight - canvasWrap.offsetHeight;
 
-			resizePad = function() {
-				var canvasWrapWidth = canvasWrap.clientWidth,
-					canvasWrapHeight = canvasWrap.clientHeight;
+			canvasWrap.scrollTop = val*(hideHeight/moveDest);
+		});
 
-				if(canvasWrapWidth<params.width) {
-					ele.removeClass(scrollWrapX, "pad-hide");
-					var scrollWidth = canvasWrapWidth - (params.width - canvasWrapWidth);
-					scrollWidth = scrollWidth<10?10:scrollWidth;
-					scrollX.style.width = scrollWidth + "px";
-				} else {
-					ele.addClass(scrollWrapX, "pad-hide");
-				}
-
-				if(canvasWrapHeight<params.height) {
-					ele.removeClass(scrollWrapY, "pad-hide");
-					var scrollHeight = canvasWrapHeight - (params.height - canvasWrapHeight);
-					scrollHeight = scrollHeight<10?10:scrollHeight;
-					scrollY.style.height = scrollHeight + "px";
-				} else {
-					ele.addClass(scrollWrapY, "pad-hide");
-				}
-			};
-		} else {
-			var canvasWrapWidth = canvasWrap.clientWidth, 
-				canvasWrapHeight = canvasWrap.clientHeight;
-
-			resizePad = function() {
-				var canvasWrapWidth = canvasWrap.clientWidth, 
-					canvasWrapHeight = canvasWrap.clientHeight;
-
-				if(canvasWrapWidth!=params.width || canvasWrapHeight!=params.height) {
-					params.width = canvasWrapWidth;
-					params.height = canvasWrapHeight;
-					mainCanvas.width = canvasWrapWidth;
-					mainCanvas.height = canvasWrapHeight;
-					bufferCanvas1.width = canvasWrapWidth;
-					bufferCanvas1.height = canvasWrapHeight;
-					bufferCanvas2.width = canvasWrapWidth;
-					bufferCanvas2.height = canvasWrapHeight;
-					bufferCanvas3.width = canvasWrapWidth;
-					bufferCanvas3.height = canvasWrapHeight;
-					bufferCanvas4.width = canvasWrapWidth;
-					bufferCanvas4.height = canvasWrapHeight;
-
-					self.tab.active.call(self, self.tab.getActive().id);
-				}
-			};
-		}
-		
-		mainCanvas.width = canvasWrapWidth;
-		mainCanvas.height = canvasWrapHeight;
-		bufferCanvas1.width = canvasWrapWidth;
-		bufferCanvas1.height = canvasWrapHeight;
-		bufferCanvas2.width = canvasWrapWidth;
-		bufferCanvas2.height = canvasWrapHeight;
-		bufferCanvas3.width = canvasWrapWidth;
-		bufferCanvas3.height = canvasWrapHeight;
-		bufferCanvas4.width = canvasWrapWidth;
-		bufferCanvas4.height = canvasWrapHeight;
-		params.width = canvasWrapWidth;
-		params.height = canvasWrapHeight;
-		isFixedSize && resizePad();
+		var oldAvilWidth = canvasWrap.clientWidth, oldAvilHeight = canvasWrap.clientHeight;
 
 		ele.addEvent(window, "resize", function() {
-			resizePad();
+			var avilWidth = canvasWrap.clientWidth,
+				avilHeight = canvasWrap.clientHeight;
+
+			if(avilWidth!=oldAvilWidth || avilHeight!=oldAvilHeight) {
+				createSize();
+				resizePad();
+				self.tab.active.call(self, self.tab.getActive().id);
+				oldAvilWidth = avilWidth;
+				oldAvilHeight = avilHeight;
+			}
 		});
+
+		var resizePad = function(w, h) {
+			var width = w || params.width, height = h || params.height;
+			mainCanvas.width = width;
+			mainCanvas.height = height;
+			bufferCanvas1.width = width;
+			bufferCanvas1.height = height;
+			bufferCanvas2.width = width;
+			bufferCanvas2.height = height;
+			bufferCanvas3.width = width;
+			bufferCanvas3.height = height;
+			bufferCanvas4.width = width;
+			bufferCanvas4.height = height;
+			resetScroll(w, h);
+		};
+
+		var resetScroll = function(w, h) {
+			var canvasWrapWidth = canvasWrap.clientWidth, 
+				canvasWrapHeight = canvasWrap.clientHeight,
+				width = w || params.width,
+				height = h || params.height;
+
+			if(canvasWrapWidth<width) {
+				ele.removeClass(scrollWrapX, "pad-hide");
+				var scrollWidth = canvasWrapWidth - (width - canvasWrapWidth);
+				scrollWidth = scrollWidth<10?10:scrollWidth;
+				scrollX.style.width = scrollWidth + "px";
+			} else {
+				ele.addClass(scrollWrapX, "pad-hide");
+			}
+
+			if(canvasWrapHeight<height) {
+				ele.removeClass(scrollWrapY, "pad-hide");
+				var scrollHeight = canvasWrapHeight - (height - canvasWrapHeight);
+				scrollHeight = scrollHeight<10?10:scrollHeight;
+				scrollY.style.height = scrollHeight + "px";
+			} else {
+				ele.addClass(scrollWrapY, "pad-hide");
+			}
+		};
 
 		self.tab = new Tab(params.wrap);
 		self.textInput = textInput;
 		self.mouseIconCanvas = bufferCanvas1;
 		self.createImageCanvas = bufferCanvas3;
 		self.fileCanvas = bufferCanvas4;
-		ele.css(mainCanvas, "background", self.params.background);
-		ele.css(bufferCanvas4, "background", self.params.background);
+		self.mainCanvas = mainCanvas;
+
+		createSize();
+		resizePad();
+
+		Object.defineProperty(self.tab, "resizePad", {
+			value: resizePad
+		});
 
 		ele.addEvent(colorInput, "change", function() {
 			self.params.color = this.value;
@@ -1639,6 +1764,7 @@
 			ele.removeClass(fullScreenBtn, isFullScreen?"icon-enlarge":"icon-narrow");
 			ele.addClass(fullScreenBtn, isFullScreen?"icon-narrow":"icon-enlarge");
 			resizePad();
+			self.tab.active.call(self, self.tab.getActive().id);
 		};
 
 		var exportImage = function() {
@@ -1651,8 +1777,9 @@
 			downloadEle.click();
 		};
 
-		self.pad.resize = function() {
-			resizePad();
+		self.pad.resize = function(w, h) {
+			!isNaN(w)&&!isNaN(h)?resizePad(w, h):resizePad();
+			self.tab.active.call(self, self.tab.getActive().id);
 		};
 
 		self.pad.fullScreen = function() {
@@ -1684,7 +1811,8 @@
 					show: isShow, 
 					that: self,
 					from: from,
-					tabId: newTab?id:activeTab.id
+					tabId: newTab?id:activeTab.id,
+					original: params.original || false
 				});
 
 				self.tab.setPage.call(self, void(0)!=id?id:activeTab.id, pageObj);
@@ -1697,7 +1825,7 @@
 			};
 
 			if(newTab) {
-				var _tab = {id:tabId, name:tabName};
+				var _tab = {id: tabId, name: tabName};
 				var id = self.tab.build.call(self, bufferCanvas4, 1, null, _tab, from===self.params.id);
 				params.tabId = id;
 
@@ -1837,31 +1965,45 @@
 			}
 		});
 
-		ele.addEvent(bufferCanvas1, eventMap["move"], function() {
-			if(!current) return ;
+		var mouseX = 0, mouseY = 0;
 
-			var args = [].slice.call(arguments, 0),
-				e = args[0] || window.event,
-				rect = this.getBoundingClientRect(),
-				item = current.name.toLowerCase(),
+		ele.addEvent(bufferCanvas1, eventMap["move"], function() {
+			var args = [].slice.call(arguments, 0), e = args[0] || window.event;
+			if(isMobile && e.targetTouches.length>1) return ;
+
+			var rect = this.getBoundingClientRect(),
 				pos = {
-					x: (isMobile?e.targetTouches[0].clientX:e.clientX) - (rect.x || rect.left), 
+					x: (isMobile?e.targetTouches[0].clientX:e.clientX) - (rect.x || rect.left),
 					y: (isMobile?e.targetTouches[0].clientY:e.clientY) - (rect.y || rect.top)
 				};
 
-			if(handPad || active) {
-				switch(item) {
-					case "ferula":
-					current.mouseRender.call(self, pos);
-					break;
-					case "circular":
-					case "quadrate":
-					current.mouseRender.call(self, pos);
-					default:
-					current.bufferRender.call(self, pos);
+			if(!current) {
+				if(active) {
+					var px = isMobile?(mouseX - pos.x):(pos.x - mouseX), py = isMobile?(mouseY - pos.y):(pos.y - mouseY);
+					canvasWrap.scrollLeft = canvasWrap.scrollLeft + px;
+					canvasWrap.scrollTop = canvasWrap.scrollTop + py;
+					scrollX.style.left = Math.min(Math.max(px/((this.offsetWidth - self.params.width)/(self.params.width - scrollX.offsetWidth)) + scrollX.offsetLeft, 0), self.params.width - scrollX.offsetWidth) + "px";
+					scrollY.style.top = Math.min(Math.max(py/((this.offsetHeight - self.params.height)/(self.params.height - scrollY.offsetHeight)) + scrollY.offsetTop, 0), self.params.height - scrollY.offsetHeight) + "px";
+					mouseX = pos.x;
+					mouseY = pos.y;
 				}
 			} else {
-				current.mouseRender && current.mouseRender.call(self, pos);
+				var item = current.name.toLowerCase();
+
+				if(handPad || active) {
+					switch(item) {
+						case "ferula":
+						current.mouseRender.call(self, pos);
+						break;
+						case "circular":
+						case "quadrate":
+						current.mouseRender.call(self, pos);
+						default:
+						current.bufferRender.call(self, pos);
+					}
+				} else {
+					current.mouseRender && current.mouseRender.call(self, pos);
+				}
 			}
 
 			if(window.event) {
@@ -1875,17 +2017,20 @@
 
 		ele.addEvent(bufferCanvas1, eventMap["down"], function() {
 			var args = [].slice.call(arguments, 0),
+				e = args[0] || window.event,
 				rect = this.getBoundingClientRect(),
 				lastSpan = toolbarWrap.getElementsByClassName("selected-item")[0],
-				e = args[0] || window.event,
 				pos = {
 					x: (isMobile?e.targetTouches[0].clientX:e.clientX) - (rect.x || rect.left), 
 					y: (isMobile?e.targetTouches[0].clientY:e.clientY) - (rect.y || rect.top)
 				};
 
+			mouseX = pos.x;
+			mouseY = pos.y;
 			active = true;
+			if(!current) return ;
 			ele.removeClass(lastSpan, "selected-item");
-			current && current.bufferRender && current.bufferRender.call(self, pos, true);
+			current.bufferRender && current.bufferRender.call(self, pos, true);
 
 			if(window.event) {
 				e.returnValue = false;
@@ -1933,7 +2078,7 @@
 				if(val.splitPage) {
 					var pageObj = new Page({
 						data: val.data, 
-						show: 0===val.type, 
+						show: 0 === val.type, 
 						that: self,
 						tabId: _n
 					});
