@@ -1091,8 +1091,8 @@
 					if(pageMap[id]) {
 						pageMap[id].clear.call(self, params);
 					} else {
-						dataMap[id].length = 0;
-						canvasMap[id].width = canvasMap[id].width;
+						if(dataMap[id]) dataMap[id].length = 0;
+						if(canvasMap[id]) canvasMap[id].width = canvasMap[id].width;
 					}
 				}
 
@@ -1981,7 +1981,7 @@
 
 			if(!current) {
 				if(active) {
-					var moveX = posX - mouseX, moveY = posY - mouseY;
+					var moveX = mouseX - posX, moveY = mouseY - posY;
 					canvasWrap.scrollLeft = canvasWrap.scrollLeft + moveX;
 					canvasWrap.scrollTop = canvasWrap.scrollTop + moveY;
 					scrollX.style.left = Math.min(Math.max(moveX/((this.offsetWidth - self.params.width)/(self.params.width - scrollX.offsetWidth)) + scrollX.offsetLeft, 0), self.params.width - scrollX.offsetWidth) + "px";
