@@ -1972,20 +1972,22 @@
 			if(isMobile && e.targetTouches.length>1) return ;
 
 			var rect = this.getBoundingClientRect(),
+				posX = isMobile?e.targetTouches[0].clientX:e.clientX,
+				posY = isMobile?e.targetTouches[0].clientY:e.clientY,
 				pos = {
-					x: (isMobile?e.targetTouches[0].clientX:e.clientX) - (rect.x || rect.left),
-					y: (isMobile?e.targetTouches[0].clientY:e.clientY) - (rect.y || rect.top)
+					x: posX - (rect.x || rect.left),
+					y: posY - (rect.y || rect.top)
 				};
 
 			if(!current) {
 				if(active) {
-					var px = isMobile?(mouseX - pos.x):(pos.x - mouseX), py = isMobile?(mouseY - pos.y):(pos.y - mouseY);
-					canvasWrap.scrollLeft = canvasWrap.scrollLeft + px;
-					canvasWrap.scrollTop = canvasWrap.scrollTop + py;
-					scrollX.style.left = Math.min(Math.max(px/((this.offsetWidth - self.params.width)/(self.params.width - scrollX.offsetWidth)) + scrollX.offsetLeft, 0), self.params.width - scrollX.offsetWidth) + "px";
-					scrollY.style.top = Math.min(Math.max(py/((this.offsetHeight - self.params.height)/(self.params.height - scrollY.offsetHeight)) + scrollY.offsetTop, 0), self.params.height - scrollY.offsetHeight) + "px";
-					mouseX = pos.x;
-					mouseY = pos.y;
+					var moveX = posX - mouseX, moveY = posY - mouseY;
+					canvasWrap.scrollLeft = canvasWrap.scrollLeft + moveX;
+					canvasWrap.scrollTop = canvasWrap.scrollTop + moveY;
+					scrollX.style.left = Math.min(Math.max(moveX/((this.offsetWidth - self.params.width)/(self.params.width - scrollX.offsetWidth)) + scrollX.offsetLeft, 0), self.params.width - scrollX.offsetWidth) + "px";
+					scrollY.style.top = Math.min(Math.max(moveY/((this.offsetHeight - self.params.height)/(self.params.height - scrollY.offsetHeight)) + scrollY.offsetTop, 0), self.params.height - scrollY.offsetHeight) + "px";
+					mouseX = posX;
+					mouseY = posY;
 				}
 			} else {
 				var item = current.name.toLowerCase();
@@ -2025,8 +2027,8 @@
 					y: (isMobile?e.targetTouches[0].clientY:e.clientY) - (rect.y || rect.top)
 				};
 
-			mouseX = pos.x;
-			mouseY = pos.y;
+			mouseX = isMobile?e.targetTouches[0].clientX:e.clientX;
+			mouseY = isMobile?e.targetTouches[0].clientY:e.clientY;
 			active = true;
 			if(!current) return ;
 			ele.removeClass(lastSpan, "selected-item");
