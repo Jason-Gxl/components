@@ -2,6 +2,7 @@
 	"use strict";
 	var vm = window.vm || {},
 		toString = Object.prototype.toString,
+		URL = window.URL || window.webkitURL,
 		padMap = {},
 		padCount = 0,
 		padTab = [],
@@ -25,8 +26,10 @@
 		// 默认的白板初始化参数
 		// ferula, ellipesstroke, rectstroke, pen, eraser, rect, ellipes, text, line, arrow, color, export, scissors, clear, enlarge, file, handPad
 		defaultConfig = {
+			data: null,
 			layout: "leftTop",
 			size: "100%",
+			fontSize: 16,
 			vertical: false,
 			disable: false,
 			wrap: document.body,
@@ -108,8 +111,6 @@
 					<canvas class="buffer-can-1"></canvas>\
 				</div>\
 				<div class="split-page-wrap"></div>\
-				<div class="scroll-y-wrap pad-hide"><span class="scroll-y scroll-toolbar"></span></div>\
-				<div class="scroll-x-wrap pad-hide"><span class="scroll-x scroll-toolbar"></span></div>\
 			</div>\
 			<div class="pad-tab-wrap">\
 				<ul class="pad-tab-list"></ul>\
@@ -184,45 +185,194 @@
 	// 滚动条模块
 	// 如果创建白板时，为白板指定了固定大小，且白板大小大于当前放置白板的容器时会创建滚动条
 	var scroll = (function() {
-		var moveEvent = function() {
-			var args = [].slice.call(arguments, 0),
-				e = args[0] || window.event,
-				type = moveEvent.type,
-				node = moveEvent.node,
-				rect = node.offsetParent.getBoundingClientRect();
+		var scrolls = [],
+			DIV = document.createElement("DIV"),
+			yTpl = '<div class="scroll-y-wrap pad-hide"><span class="scroll-y scroll-toolbar"></span></div>',
+			xTpl = '<div class="scroll-x-wrap pad-hide"><span class="scroll-x scroll-toolbar"></span></div>';
 
-			if(0===type) {
-				var val = (e.x || e.clientX) - moveEvent.dValue - (rect.x || rect.left);
-				val = 0>val?0:(val + node.offsetWidth>rect.width?rect.width-node.offsetWidth:val);
-				node.style.left = val + "px";
-			} else {
-				var val = (e.y || e.clientY) - moveEvent.dValue - (rect.y || rect.top);
-				val = 0>val?0:(val + node.offsetHeight>rect.height?rect.height-node.offsetHeight:val);
-				node.style.top = val + "px";
+		function Scroll(params) {
+			if(!(this instanceof Scroll)) {
+				return new Scroll(params);
 			}
 
-			moveEvent.callback(val);
+			var self = this,
+				disable = false,
+				activeType = "x",
+				startPoint = {x: 0, y: 0},
+				config = params.config,
+				parentNode = params.node.parentNode;
+
+			self.params = params;
+			self.events = {};
+
+			var scrollBuilder = function(type) {
+				DIV.innerHTML = "x"===type?xTpl:yTpl;
+
+				if("x"===type) {
+					self.xScrollObj = DIV.removeChild(DIV.firstChild);
+					parentNode.appendChild(self.xScrollObj);
+					params.node.clientWidth<params.node.scrollWidth && self.xScrollObj.classList.remove("pad-hide");
+				} else {
+					self.yScrollObj = DIV.removeChild(DIV.firstChild);
+					parentNode.appendChild(self.yScrollObj);
+					params.node.clientHeight<params.node.scrollHeight && self.yScrollObj.classList.remove("pad-hide");
+				}
+			};
+
+			Object.defineProperty(this, "disable", {
+				set: function(d) {
+					disable = d;
+
+					if(disable) {
+						self.xScrollObj && self.xScrollObj.classList.add("pad-hide");
+						self.yScrollObj && self.yScrollObj.classList.add("pad-hide");
+					} else {
+						self.xScrollObj && params.node.clientWidth<params.node.scrollWidth && self.xScrollObj.classList.remove("pad-hide");
+						self.yScrollObj && params.node.clientHeight<params.node.scrollHeight && self.yScrollObj.classList.remove("pad-hide");
+					}
+				},
+				get: function() {
+					return disable;
+				}
+			});
+
+			if(!params.type) {
+				scrollBuilder("x");
+				scrollBuilder("y");
+			} else {
+				scrollBuilder(params.type);
+			}
+
+			var mousemoveHandler = function() {
+				var args = [].slice.call(arguments, 0),
+					e = args[0] || window.event;
+
+				if("x"===activeType) {
+					var x = e.x || e.clientX;
+					var data = {type: "x", distance: x-startPoint.x, from: config.id, width: config.width, height: config.height};
+					startPoint.x = x;
+				} else {
+					var y = e.y || e.clientY;
+					var data = {type: "y", distance: y-startPoint.y, from: config.id, width: config.width, height: config.height};
+					startPoint.y = y;
+				}
+
+				self.scroll(data);
+				self.fire("scroll", data);
+			};
+
+			var mouseupHandler = function() {
+				ele.delEvent(document, "mousemove", mousemoveHandler);
+				ele.delEvent(document, "mouseup", mouseupHandler);
+			};
+
+			if(self.xScrollObj) {
+				ele.addEvent(self.xScrollObj.getElementsByClassName("scroll-toolbar")[0], "mousedown", function() {
+					if(disable) return ;
+
+					var args = [].slice.call(arguments, 0),
+						e = args[0] || window.event;
+
+					startPoint.x = e.x || e.clientX;
+					activeType = "x";
+					ele.addEvent(document, "mousemove", mousemoveHandler);
+					ele.addEvent(document, "mouseup", mouseupHandler);
+				});
+			}
+
+			if(self.yScrollObj) {
+				ele.addEvent(self.yScrollObj.getElementsByClassName("scroll-toolbar")[0], "mousedown", function() {
+					if(disable) return ;
+
+					var args = [].slice.call(arguments, 0),
+						e = args[0] || window.event;
+
+					startPoint.y = e.y || e.clientY;
+					activeType = "y";
+					ele.addEvent(document, "mousemove", mousemoveHandler);
+					ele.addEvent(document, "mouseup", mouseupHandler);
+				});
+			}
+		}
+
+		Scroll.prototype = {
+			constructor: Scroll,
+			scroll: function(param) {
+				var params = this.params;
+
+				if("x"===param.type) {
+					var xScrollToolbar = this.xScrollObj.getElementsByClassName("scroll-toolbar")[0];
+					if((xScrollToolbar.offsetLeft + xScrollToolbar.offsetWidth===this.xScrollObj.clientWidth && param.distance>=0) || (0===xScrollToolbar.offsetLeft && param.distance<=0)) return ;
+					param.distance = param.distance / (params.config.width/param.width);
+					xScrollToolbar.style.left = Math.max(0, Math.min(xScrollToolbar.offsetLeft + param.distance, this.xScrollObj.clientWidth - xScrollToolbar.offsetWidth)) + "px";
+					params.node.scrollLeft = params.node.scrollLeft + (param.distance / ((this.xScrollObj.clientWidth - xScrollToolbar.offsetWidth)/(params.node.scrollWidth - params.node.clientWidth)));
+				} else {
+					var yScrollToolbar = this.yScrollObj.getElementsByClassName("scroll-toolbar")[0];
+					if((yScrollToolbar.offsetTop + yScrollToolbar.offsetHeight===this.yScrollObj.clientHeight && param.distance>=0) || (0===yScrollToolbar.offsetTop && param.distance<=0)) return ;
+					param.distance = param.distance / (params.config.height/param.height);
+					yScrollToolbar.style.top = Math.max(0, Math.min(yScrollToolbar.offsetTop + param.distance, this.yScrollObj.clientHeight - yScrollToolbar.offsetHeight)) + "px";
+					params.node.scrollTop = params.node.scrollTop + (param.distance / ((this.yScrollObj.clientHeight - yScrollToolbar.offsetHeight)/(params.node.scrollHeight - params.node.clientHeight)));
+				}
+
+				param.from===params.config.id && "[object Function]"===toString.call(params.config.onScroll) && params.config.onScroll(param);
+			},
+			resize: function() {
+				var params = this.params;
+
+				if(this.xScrollObj) {
+					var xScrollToolbar = this.xScrollObj.getElementsByClassName("scroll-toolbar")[0],
+						coverWidth = params.node.scrollWidth - params.node.clientWidth;
+					
+					xScrollToolbar.style.width = Math.max(this.xScrollObj.clientWidth - coverWidth/10, 50) + "px";
+				}
+
+				if(this.yScrollObj) {
+					var yScrollToolbar = this.yScrollObj.getElementsByClassName("scroll-toolbar")[0],
+						coverHeight = params.node.scrollHeight - params.node.clientHeight;
+
+					yScrollToolbar.style.height = Math.max(this.yScrollObj.clientHeight - coverHeight/10, 50) + "px";
+				}
+			},
+			addEvent: function(eventName, fn) {
+				var events = this.events;
+
+				if(!events[eventName]) {
+					events[eventName] = [fn];
+				} else {
+					events[eventName].push(fn);
+				}
+			},
+			delEvent: function(eventName, fn) {
+				var events = this.events;
+
+				if("[object Function]"===toString.call(fn)) {
+					events[eventName].splice(events[eventName].indexOf(fn), 1);
+				} else {
+					delete events[eventName];
+				}
+			},
+			fire: function() {
+				var args = [].slice.call(arguments, 0),
+					eventName = args.shift(),
+					events = this.events;
+
+				events[eventName] && events[eventName].forEach(function(fn) {
+					"[object Function]"===toString.call(fn) && fn.apply(Object.create(null), args);
+				});
+			}
 		};
 
 		return {
-			// 创建滚动条接口
-			init: function(node, type, callback) {
-				ele.addEvent(node, eventMap["down"], function() {
-					var args = [].slice.call(arguments, 0),
-						e = args[0] || window.event,
-						start = 0===type?(e.x || e.clientX):(e.y || e.clientY),
-						rect = this.getBoundingClientRect();
-
-					moveEvent.type = type;
-					moveEvent.node = this;
-					moveEvent.callback = callback;
-					moveEvent.dValue = start - (0===type?(rect.x || rect.left):(rect.y || rect.top));
-					ele.addEvent(document, eventMap["move"], moveEvent);
-
-					ele.addEvent(document, eventMap["up"], function() {
-						ele.delEvent(document, eventMap["move"], moveEvent);
-					});
-				});				
+			init: function(params) {
+				if(!params.node) return ;
+				var scrollObj = new Scroll(params);
+				scrolls.push(scrollObj);
+				return scrollObj;
+			},
+			resize: function() {
+				scrolls.forEach(function(scrollObj) {
+					scrollObj.resize();
+				});
 			}
 		};
 	}());
@@ -666,6 +816,7 @@
 			}
 			
 			ctx.fillStyle = params.color;
+			ctx.font = params.size + "px sans-serif";
 			ctx.save();
 			ctx.scale(wScale, hScale);
 			ctx.beginPath();
@@ -859,6 +1010,7 @@
 				ctx = canvas.getContext("2d");
 
 			canvas.width = canvas.width;
+			if(-1===data[0] || -1===data[1]) return ;
 			ctx.scale(scale, scale);
 			ctx.beginPath();
 
@@ -884,6 +1036,7 @@
 				ctx = canvas.getContext("2d");
 
 			canvas.width = canvas.width;
+			if(-1===data[0] || -1===data[1]) return ;
 			ctx.scale(scale, scale);
 			ctx.beginPath();
 			ctx.fillStyle = "red";
@@ -948,9 +1101,9 @@
 				}
 
 				ele.addEvent(li, eventMap["click"], function() {
-					if(this===activeObj.tab) return ;
-					that.params.onTabChange && that.params.onTabChange(_id);
+					if(true===that.params.disable || this===activeObj.tab) return ;
 					self.active.call(that, _id);
+					that.params.onTabChange && that.params.onTabChange(_id);
 				});
 
 				tabWrap.appendChild(li);
@@ -1113,6 +1266,26 @@
 			self.getPage = function(id) {
 				return pageMap[id];
 			};
+
+			self.render = function(_data, callback) {
+				var that = this;
+
+				data.render.call(that, _data, function() {
+					if("[object Function]"===toString.call(callback)) {
+						var outData = data.copy(_data), obj = {};
+
+						obj[activeObj.id] = {
+							data: outData,
+							type: activeObj.type,
+							splitPage: activeObj.page?1:0
+						};
+
+						callback(obj);
+					}
+				});
+
+				_data.status && that.tab.push.call(that, activeObj.id, _data);
+			};
 		}
 
 		_tab.prototype = {
@@ -1157,7 +1330,10 @@
 		ele.addEvent(goPageBtn, eventMap["click"], function() {
 			if(that.params.disable) return ;
 			var pageNumber = pageNumberInput.value;
-			self.go(pageNumber);
+			
+			self.go(pageNumber, function() {
+				that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber, _data[pageNumber-1][0]);
+			});
 		});
 
 		ele.addEvent(pageNumberInput, "input", function() {
@@ -1170,7 +1346,10 @@
 
 		this.pre = function() {
 			currentPage--;
-			this.go(currentPage);
+
+			this.go(currentPage, function() {
+				that.params.onPageTurn && that.params.onPageTurn(tabId, currentPage, _data[currentPage-1][0]);
+			});
 		};
 
 		var render = function(pageNumber, start, callback) {
@@ -1203,13 +1382,13 @@
 			}
 		};
 
-		this.go = function(pageNumber, out) {
+		this.go = function(pageNumber, callback) {
 			pageNumber = pageNumber<=1?1:pageNumber;
 			pageNumber = pageNumber>=total?total:pageNumber;
 			that.mainCanvas.width = that.mainCanvas.width;
 
 			render(pageNumber, 0, function() {
-				!out && that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber, _data[pageNumber-1][0]);
+				"[object Function]" === toString.call(callback) && callback();
 			});
 
 			currentPage = pageNumber;
@@ -1232,7 +1411,10 @@
 
 		this.next = function() {
 			currentPage++;
-			this.go(currentPage);
+
+			this.go(currentPage, function() {
+				that.params.onPageTurn && that.params.onPageTurn(tabId, currentPage, _data[currentPage-1][0]);
+			});
 		};
 
 		this.show = function() {
@@ -1275,18 +1457,18 @@
 			}
 		});
 
-		this.push = function(d) {
+		this.push = function(d, pageNumber) {
 			var activeTab = that.tab.getActive(), count = 0;
-			d.pageNumber = currentPage;
-			_data[currentPage-1].push(d);
+			d.pageNumber = void(0)!=pageNumber?pageNumber:currentPage;
+			_data[d.pageNumber-1].push(d);
 			that.tab.saveData.call(that);
 
-			_data[currentPage-1].forEach(function(d) {
+			_data[d.pageNumber-1].forEach(function(d) {
 				if("file"!=d.type && "auto"!=d.from) count++;
 			});
 
 			if(count-that.params.saveImgStep>=that.params.saveImgStep) {
-				data.saveAsImage.call(that, _data[currentPage-1], that.container[activeTab.id].type);
+				data.saveAsImage.call(that, _data[d.pageNumber-1], that.container[activeTab.id].type);
 			}
 		};
 
@@ -1317,13 +1499,34 @@
 			}
 		};
 
+		this.render = function(_data, callback) {
+			var that = this;
+
+			data.render.call(that, _data, function() {
+				if("[object Function]"===toString.call(callback)) {
+					var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
+
+					obj[activeTab.id] = {
+						data: outData,
+						type: activeTab.type,
+						pageNumber: currentPage,
+						splitPage: activeTab.page?1:0
+					};
+
+					callback(obj);
+				}
+			});
+
+			_data.status && that.page.push.call(that, _data);
+		};
+
 		that.params.disable && this.disable();
 		that.tab.saveData.call(that);
 
 		if(show) {
 			pageWrap.innerHTML = "";
 			_data.length>1 && pageWrap.appendChild(pageEle);
-			self.go(1);
+			params.from === that.params.id && self.go(1);
 		}
 	}
 
@@ -1343,28 +1546,14 @@
 			container: {},
 			id: params.id || padCount++,
 			render: function(_data) {
-				data.render.call(that, _data, function() {
-					if(params.onRender) {
-						var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
-
-						obj[activeTab.id] = {
-							data: outData,
-							type: activeTab.type,
-							splitPage: activeTab.page?1:0
-						};
-
-						params.onRender(obj);
-					}
-				});
-
-				if(_data.status) {
-					var activeTab = that.tab.getActive();
-
-					if(activeTab.page) {
-						activeTab.page.push.call(that, _data);
-					} else {
-						that.tab.push.call(that, activeTab.id, _data);
-					}
+				if(that.page) {
+					that.page.render.call(that, _data, function(d) {
+						"[object Function]"===toString.call(params.onRender) && params.onRender(d);
+					});
+				} else {
+					that.tab.render.call(that, _data, function(d) {
+						"[object Function]"===toString.call(params.onRender) && params.onRender(d);
+					});
 				}
 			},
 			mouseRender: function(_data) {
@@ -1391,46 +1580,41 @@
 			var activeTab = that.tab.getActive();
 
 			for(var key in _data) {
-				var val = _data[key],
-					type = val.type,
-					val = val.data;
+				var val = _data[key], type = val.type, realData = val.data;
 
 				if(key==activeTab.id) {
-					data.render.call(that, val);
-
-					if(val.status) {
-						if(activeTab.page) {
-							activeTab.page.push.call(that, val);
+					if(!activeTab.page) {
+						that.tab.render.call(that, realData);
+					} else {
+						if(activeTab.page.getPageNumber() === val.pageNumber) {
+							that.page.render.call(that, realData);
 						} else {
-							that.tab.push.call(that, key, val);
+							realData.status && that.page.push.call(that, realData, +val.pageNumber);
 						}
 					}
 				} else {
 					if(that.tab.getTab(key)) {
-						if(val.status) {
+						if(realData.status) {
 							var page = that.tab.getPage(key);
 
 							if(page) {
-								page.push.call(that, val, key);
+								page.push.call(that, realData, +val.pageNumber);
 							} else {
-								that.tab.push.call(that, key, val);
+								that.tab.push.call(that, key, realData);
 							}
 						}
 					} else {
-						that.tab.build.call(that, that.fileCanvas, 1, [val], {id: key}, false);
+						that.tab.build.call(that, that.fileCanvas, 1, [realData], {id: key}, false);
 					}
 				}
 			}
 		};
 
 		var renderMouse = function(_data) {
-			var scaleWidth = null,
-				scaleHeight = null;
+			var scaleWidth = null, scaleHeight = null;
 
 			for(var key in _data) {
-				var val = _data[key],
-					type = val.type,
-					val = val.data;
+				var val = _data[key], type = val.type, val = val.data;
 				mouse.render.call(that, val);
 			}
 		};
@@ -1491,7 +1675,7 @@
 
 			if(id===activeTab.id) {
 				var pageObj = that.tab.getPage.call(that, id);
-				pageObj.go(number, true);
+				pageObj.go(number);
 			}
 		};
 
@@ -1521,10 +1705,6 @@
 			curActiveChildNode = null,
 			fr = new FileReader(),
 			active = false,
-			scrollWrapY = null,
-			scrollWrapX = null,
-			scrollY = null,
-			scrollX = null,
 			toolbarStr = "",
 			isFullScreen = false,
 			fullScreenInterface = wrap.requestFullscreen || wrap.webkitRequestFullscreen || wrap.mozRequestFullScreen || wrap.msRequestFullscreen,
@@ -1603,10 +1783,6 @@
 		fileInput = wrap.getElementsByClassName("file-input")[0];
 		textInput = wrap.getElementsByClassName("text-input")[0];
 		mainCanvas = wrap.getElementsByClassName("main-can")[0];
-		scrollWrapX = wrap.getElementsByClassName("scroll-x-wrap")[0];
-		scrollWrapY = wrap.getElementsByClassName("scroll-y-wrap")[0];
-		scrollX = scrollWrapX.getElementsByClassName("scroll-x")[0];
-		scrollY = scrollWrapY.getElementsByClassName("scroll-y")[0];
 		bufferCanvas1 = wrap.getElementsByClassName("buffer-can-1")[0];
 		bufferCanvas2 = wrap.getElementsByClassName("buffer-can-2")[0];
 		bufferCanvas3 = wrap.getElementsByClassName("buffer-can-3")[0];
@@ -1652,9 +1828,6 @@
 			var args = [].slice.call(arguments, 0),
 				e = args[0] || window.event;
 
-			canvasWrap.scrollTop = canvasWrap.scrollTop + ("DOMMouseScroll"===e.type?(3===e.detail?100:-100):(e.deltaY));
-			scrollY.style.top = (scrollWrapY.clientHeight - scrollY.offsetHeight)*(canvasWrap.scrollTop/(canvasWrap.scrollHeight - canvasWrap.clientHeight)) + "px";
-
 			if(window.event) {
 				e.returnValue = false;
 				e.cancelBubble = true;
@@ -1662,22 +1835,10 @@
 				e.preventDefault();
 				e.stopPropagation();
 			}
-		});
 
-		scroll.init(scrollX, 0, function(val) {
-			var rect = scrollWrapX.getBoundingClientRect(),
-				moveDest = rect.width - scrollX.offsetWidth,
-				hideWidth = canvasWrap.scrollWidth - canvasWrap.offsetWidth;
-
-			canvasWrap.scrollLeft = val*(hideWidth/moveDest);
-		});
-
-		scroll.init(scrollY, 1, function(val) {
-			var rect = scrollWrapY.getBoundingClientRect(),
-				moveDest = rect.height - scrollY.offsetHeight,
-				hideHeight = canvasWrap.scrollHeight - canvasWrap.offsetHeight;
-
-			canvasWrap.scrollTop = val*(hideHeight/moveDest);
+			if(true===self.params.disable) return ;
+			var data = {type: "y", distance: ("DOMMouseScroll"===e.type?(3===e.detail?100:-100):(e.deltaY))/10, from: params.id, width: params.width, height: params.height};
+			scrollObj.scroll(data);
 		});
 
 		var oldAvilWidth = canvasWrap.clientWidth, oldAvilHeight = canvasWrap.clientHeight;
@@ -1707,32 +1868,7 @@
 			bufferCanvas3.height = height;
 			bufferCanvas4.width = width;
 			bufferCanvas4.height = height;
-			resetScroll(w, h);
-		};
-
-		var resetScroll = function(w, h) {
-			var canvasWrapWidth = canvasWrap.clientWidth, 
-				canvasWrapHeight = canvasWrap.clientHeight,
-				width = w || params.width,
-				height = h || params.height;
-
-			if(canvasWrapWidth<width) {
-				ele.removeClass(scrollWrapX, "pad-hide");
-				var scrollWidth = canvasWrapWidth - (width - canvasWrapWidth);
-				scrollWidth = scrollWidth<10?10:scrollWidth;
-				scrollX.style.width = scrollWidth + "px";
-			} else {
-				ele.addClass(scrollWrapX, "pad-hide");
-			}
-
-			if(canvasWrapHeight<height) {
-				ele.removeClass(scrollWrapY, "pad-hide");
-				var scrollHeight = canvasWrapHeight - (height - canvasWrapHeight);
-				scrollHeight = scrollHeight<10?10:scrollHeight;
-				scrollY.style.height = scrollHeight + "px";
-			} else {
-				ele.addClass(scrollWrapY, "pad-hide");
-			}
+			scrollObj && scrollObj.resize();
 		};
 
 		self.tab = new Tab(params.wrap);
@@ -1741,10 +1877,17 @@
 		self.createImageCanvas = bufferCanvas3;
 		self.fileCanvas = bufferCanvas4;
 		self.mainCanvas = mainCanvas;
-
 		createSize();
 		resizePad();
 
+		var scrollObj = scroll.init({
+			node: canvasWrap,
+			config: params
+		});
+
+		scrollObj.disable = params.disable;
+		scrollObj.resize();
+		
 		Object.defineProperty(self.tab, "resizePad", {
 			value: resizePad
 		});
@@ -1769,17 +1912,31 @@
 
 		var exportImage = function() {
 			var uuid = data.uuid,
-				image = self.mainCanvas.toDataURL().replace(/image\/png/, "image/octet-stream;Content-Disposition:attachment;filename="+uuid+".png"),
-				downloadEle = document.createElement("A");
+				image = self.mainCanvas.toDataURL(),
+				downloadEle = document.createElement("A"),
+				imageDataArr = image.split(","),
+				bStr = atob(imageDataArr[1]),
+				len = bStr.length,
+				tArr = new Uint8Array(len);
 
+			while(len--) {
+				tArr[len] = bStr.charCodeAt(len);
+			}
+
+			var url = URL.createObjectURL(new Blob([tArr], {mime: "image/octet-stream;Content-Disposition:attachment"}));
+			downloadEle.href = url;
 			downloadEle.download = uuid + ".png";
-			downloadEle.href = image;
 			downloadEle.click();
+			URL.revokeObjectURL(url);
 		};
 
 		self.pad.resize = function(w, h) {
 			!isNaN(w)&&!isNaN(h)?resizePad(w, h):resizePad();
 			self.tab.active.call(self, self.tab.getActive().id);
+		};
+
+		self.pad.scroll = function(data) {
+			scrollObj.scroll(data);
 		};
 
 		self.pad.fullScreen = function() {
@@ -1804,8 +1961,6 @@
 			files = "[object Array]"===toString.call(files)?files:[files];
 
 			var _showFiles = function() {
-				self.pad.clear();
-
 				var pageObj = new Page({
 					data: files, 
 					show: isShow, 
@@ -1832,9 +1987,10 @@
 				if(isShow) {
 					self.tab.active.call(self, id);
 					_showFiles();
-					self.params.onTabChange && self.params.onTabChange(id);
+					from === self.params.id && self.params.onTabChange && self.params.onTabChange(id);
 				}
 			} else {
+				self.pad.clear();
 				_showFiles();
 			}
 		};
@@ -1849,8 +2005,12 @@
 			fr.readAsDataURL(this.files[0]);
 		});
 
+		ele.addEvent(textInput, "input", function() {
+			this.style.width = this.scrollWidth + "px";
+		});
+
 		ele.addEvent(textInput, "keyup", function() {
-			var args = [].slice.call(arguments, 0),
+			var args = [].slice.call(arguments, 0), 
 				e = args[0] || window.event;
 
 			if(13===e.which) {
@@ -1886,6 +2046,7 @@
 				item = span.getAttribute("item");
 
 			if(!item) return ;
+			current && current.destory.call(self);
 
 			switch(item) {
 				case "handPad":
@@ -1981,11 +2142,10 @@
 
 			if(!current) {
 				if(active) {
+					if(true===self.params.disable) return ;
 					var moveX = mouseX - posX, moveY = mouseY - posY;
-					canvasWrap.scrollLeft = canvasWrap.scrollLeft + moveX;
-					canvasWrap.scrollTop = canvasWrap.scrollTop + moveY;
-					scrollX.style.left = Math.min(Math.max(moveX/((this.offsetWidth - self.params.width)/(self.params.width - scrollX.offsetWidth)) + scrollX.offsetLeft, 0), self.params.width - scrollX.offsetWidth) + "px";
-					scrollY.style.top = Math.min(Math.max(moveY/((this.offsetHeight - self.params.height)/(self.params.height - scrollY.offsetHeight)) + scrollY.offsetTop, 0), self.params.height - scrollY.offsetHeight) + "px";
+					scrollObj.scroll({type: "x", distance: moveX, from: params.id, width: params.width, height: params.height});
+					scrollObj.scroll({type: "y", distance: moveY, from: params.id, width: params.width, height: params.height});
 					mouseX = posX;
 					mouseY = posY;
 				}
@@ -2027,13 +2187,6 @@
 					y: (isMobile?e.targetTouches[0].clientY:e.clientY) - (rect.y || rect.top)
 				};
 
-			mouseX = isMobile?e.targetTouches[0].clientX:e.clientX;
-			mouseY = isMobile?e.targetTouches[0].clientY:e.clientY;
-			active = true;
-			if(!current) return ;
-			ele.removeClass(lastSpan, "selected-item");
-			current.bufferRender && current.bufferRender.call(self, pos, true);
-
 			if(window.event) {
 				e.returnValue = false;
 				e.cancelBubble = true;
@@ -2041,12 +2194,20 @@
 				e.preventDefault();
 				e.stopPropagation();
 			}
+
+			mouseX = isMobile?e.targetTouches[0].clientX:e.clientX;
+			mouseY = isMobile?e.targetTouches[0].clientY:e.clientY;
+			active = true;
+			if(!current) return ;
+			ele.removeClass(lastSpan, "selected-item");
+			current && current.destory.call(self);
+			current.bufferRender && current.bufferRender.call(self, pos, true);
 		});
 
 		ele.addEvent(document, eventMap["down"], function() {
 			var lastSpan = toolbarWrap.getElementsByClassName("selected-item")[0];
 			ele.removeClass(lastSpan, "selected-item");
-			self.textInput.removeAttribute("style");
+			current && current.destory.call(self);
 		});
 
 		ele.addEvent(document, "mouseup", function() {
@@ -2064,7 +2225,8 @@
 		});
 
 		ele.addEvent(canvasWrap, "mouseleave", function() {
-			bufferCanvas1.width = bufferCanvas1.width;
+			current && current.destory.call(self);
+			// bufferCanvas1.width = bufferCanvas1.width;
 		});
 
 		self.bufferCanvas = bufferCanvas2;

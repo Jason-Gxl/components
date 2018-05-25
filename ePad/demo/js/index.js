@@ -34,67 +34,84 @@ document.getElementById("show_btn").addEventListener("click", function() {
 
 var pad1 = wPad.init({
 	id: 1,
-	// size: "1920*1080",
+	size: "1920*1080",
 	wrap: document.getElementById("pad1"),
 	background: "#fff",
 	autoSaveTime: 5,
 	disable: false,
+	fontSize: 18,
 	// toolbars: ["pen", "line", "text", "image", "export", "clear"],
 	onRender: function(data) {
 		pad2.render(data);
-		console.log(data);
+		console.log("pad1 onRender");
 	},
 	onShowFiles: function(data) {
 		pad2.showFiles(data);
-		console.log(data);
+		console.log("pad1 onShowFiles");
 	},
 	onMousemove: function(data) {
-		console.log(data);
 		pad2.mouseCtrl(data);
+		console.log("pad1 onMousemove");
 	},
 	onClear: function(data) {
 		pad2.clear(data);
+		console.log("pad1 onClear");
 	},
 	onTabChange: function(id) {
-		console.log(1);
 		pad2.changeTab(id);
+		console.log("pad1 onTabChange");
 	},
 	onTabRemove: function(id) {
 		pad2.removeTab(id);
+		console.log("pad1 onTabRemove");
 	},
 	onPageTurn: function(id, pageNumber, data) {
-		console.log(data);
 		pad2.turnPage(id, pageNumber);
+		console.log("pad1 onPageTurn");
+	},
+	onScroll: function(data) {
+		pad2.scroll(data);
+		console.log(data);
 	}
 });
 
 var pad2 = wPad.init({
 	id: 2,
-	// size: "4:3",
+	size: "1920*1080",
 	wrap: document.getElementById("pad2"),
 	background: "#fff",
 	autoSaveTime: 5,
-	disable: false,
+	disable: true,
 	onRender: function(data) {
-		//pad1.render(data);
-		console.log(data);
+		pad1.render(data);
+		console.log("pad2 onRender");
 	},
 	onShowFiles: function(data) {
-		
+		pad1.showFiles(data);
+		console.log("pad2 onShowFiles");
 	},
 	onMousemove: function(data) {
-		//pad1.mouseCtrl(data);
+		pad1.mouseCtrl(data);
+		console.log("pad2 onMousemove");
 	},
 	onClear: function(data) {
-		//pad1.clear(data);
+		pad1.clear(data);
+		console.log("pad2 onClear");
 	},
 	onTabChange: function(id) {
-		//pad1.changeTab(id);
+		pad1.changeTab(id);
+		console.log("pad2 onTabChange");
 	},
 	onTabRemove: function(id) {
-		//pad1.removeTab(id);
+		pad1.removeTab(id);
+		console.log("pad2 onTabRemove");
 	},
 	onPageTurn: function(id, pageNumber) {
-		//pad1.turnPage(id, pageNumber);
+		pad1.turnPage(id, pageNumber);
+		console.log("pad2 onPageTurn");
+	},
+	onScroll: function(data) {
+		pad1.scroll(data);
+		console.log(data);
 	}
 });

@@ -59,6 +59,9 @@
 				self.render(data);
 				data = self.current.interimBuffer.shift();
 			} while(data);
+		},
+		destory: function() {
+			
 		}
 	};
 

@@ -25,14 +25,15 @@
 		// status = 0
 		bufferRender: function(data, origin) {
 			var self = this;
+			console.log("text");
 
 			if(origin) {
 				self.current.points = [];
 				self.current.points.push(data.x);
 				self.current.points.push(data.y);
-				self.textInput.style.cssText = "visibility: visible; z-index: 101; left: " + data.x + "px; top: " + (data.y-self.textInput.offsetHeight/2) + "px";
+				self.textInput.style.cssText = "visibility: visible; z-index: 101; font-size: " + self.params.fontSize + "; left: " + data.x + "px; top: " + (data.y-self.textInput.offsetHeight/2-8) + "px";
 				self.textInput.focus();
-				data = {type: "text", data: [data.x, data.y], status: 0, origin: !!origin, color: self.params.color, from: self.params.id, width: self.params.width, height: self.params.height};
+				data = {type: "text", data: [data.x, data.y], status: 0, origin: !!origin, color: self.params.color, size: self.params.fontSize, from: self.params.id, width: self.params.width, height: self.params.height};
 				self.current.interimBuffer.push(data);
 			}
 		},
@@ -51,6 +52,12 @@
 			self.current.buffer.push(data);
 			self.render(data);
 			self.current.interimBuffer.length = 0;
+		},
+		destory: function() {
+			var self = this, content = self.textInput.value.replace(/^\s*|\s*$/, "");
+			if(content) self.current.render.call(self, content);
+			self.textInput.value = "";
+			self.textInput.removeAttribute("style");
 		}
 	};
 

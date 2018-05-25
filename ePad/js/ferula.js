@@ -28,6 +28,10 @@
 			pos = data;
 			self.mouseRender.call(self, data);
 		},
+		destory: function() {
+			var self = this;
+			self.current.mouseRender.call(self, {x: -1, y: -1});
+		}
 	};
 
 	var vm = window.vm || {};

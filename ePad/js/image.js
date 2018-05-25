@@ -41,6 +41,9 @@
 				self.render(data);
 				data = self.toolbarMap.image.interimBuffer.shift();
 			} while(data);
+		},
+		destory: function() {
+			
 		}
 	};
 
