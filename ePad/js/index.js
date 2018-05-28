@@ -186,9 +186,9 @@
 	// 如果创建白板时，为白板指定了固定大小，且白板大小大于当前放置白板的容器时会创建滚动条
 	var scroll = (function() {
 		var scrolls = [],
-			DIV = document.createElement("DIV"),
-			yTpl = '<div class="scroll-y-wrap pad-hide"><span class="scroll-y scroll-toolbar"></span></div>',
-			xTpl = '<div class="scroll-x-wrap pad-hide"><span class="scroll-x scroll-toolbar"></span></div>';
+			tplDiv = document.createElement("DIV"),
+			xTpl = '<div class="scroll-x-wrap pad-hide"><span class="scroll-x scroll-toolbar"></span></div>',
+			yTpl = '<div class="scroll-y-wrap pad-hide"><span class="scroll-y scroll-toolbar"></span></div>';
 
 		function Scroll(params) {
 			if(!(this instanceof Scroll)) {
@@ -199,21 +199,20 @@
 				disable = false,
 				activeType = "x",
 				startPoint = {x: 0, y: 0},
-				config = params.config,
 				parentNode = params.node.parentNode;
 
 			self.params = params;
 			self.events = {};
 
 			var scrollBuilder = function(type) {
-				DIV.innerHTML = "x"===type?xTpl:yTpl;
+				tplDiv.innerHTML = "x"===type?xTpl:yTpl;
 
 				if("x"===type) {
-					self.xScrollObj = DIV.removeChild(DIV.firstChild);
+					self.xScrollObj = tplDiv.removeChild(tplDiv.firstChild);
 					parentNode.appendChild(self.xScrollObj);
 					params.node.clientWidth<params.node.scrollWidth && self.xScrollObj.classList.remove("pad-hide");
 				} else {
-					self.yScrollObj = DIV.removeChild(DIV.firstChild);
+					self.yScrollObj = tplDiv.removeChild(tplDiv.firstChild);
 					parentNode.appendChild(self.yScrollObj);
 					params.node.clientHeight<params.node.scrollHeight && self.yScrollObj.classList.remove("pad-hide");
 				}
@@ -248,12 +247,14 @@
 					e = args[0] || window.event;
 
 				if("x"===activeType) {
-					var x = e.x || e.clientX;
-					var data = {type: "x", distance: x-startPoint.x, from: config.id, width: config.width, height: config.height};
+					var x = e.x || e.clientX,
+						scale = (self.xScrollObj.clientWidth - self.xScrollObj.getElementsByClassName("scroll-toolbar")[0].offsetWidth)/params.node.scrollWidth,
+						data = {type: "x", distance: x-startPoint.x, from: params.id, scale: scale};
 					startPoint.x = x;
 				} else {
-					var y = e.y || e.clientY;
-					var data = {type: "y", distance: y-startPoint.y, from: config.id, width: config.width, height: config.height};
+					var y = e.y || e.clientY,
+						scale = (self.yScrollObj.clientHeight - self.yScrollObj.getElementsByClassName("scroll-toolbar")[0].offsetWidth)/params.node.scrollHeight,
+						data = {type: "y", distance: y-startPoint.y, from: params.id, scale: scale};
 					startPoint.y = y;
 				}
 
@@ -298,9 +299,26 @@
 		Scroll.prototype = {
 			constructor: Scroll,
 			scroll: function(param) {
-				var params = this.params;
+				var params = this.params,
+					scrollObj = "x"===param.type?this.xScrollObj:this.yScrollObj,
+					scrollToolbar = scrollObj.getElementsByClassName("scroll-toolbar")[0];
 
-				if("x"===param.type) {
+				if(param.from===this.params.id) {
+					if("x"===param.type) {
+						var offsetLeft = scrollToolbar.offsetLeft + param.distance;
+						scrollToolbar.style.left = Math.max(0, Math.min(offsetLeft, scrollObj.clientWidth - scrollToolbar.offsetWidth)) + "px";
+						params.node.scrollLeft = params.node.scrollLeft + (param.distance/((scrollObj.clientWidth - scrollToolbar.offsetWidth)/params.node.offsetWidth));
+					} else {
+						var offsetTop = scrollToolbar.offsetTop + param.distance;
+						scrollToolbar.style.top = Math.max(0, Math.min(offsetTop, scrollObj.clientHeight - scrollToolbar.offsetHeight)) + "px";
+						params.node.scrollTop = params.node.scrollTop + (param.distance/((scrollObj.clientHeight - scrollToolbar.offsetHeight)/params.node.offsetHeight));
+					}
+				} else {
+
+				}
+				
+
+				/*if("x"===param.type) {
 					var xScrollToolbar = this.xScrollObj.getElementsByClassName("scroll-toolbar")[0];
 					if((xScrollToolbar.offsetLeft + xScrollToolbar.offsetWidth===this.xScrollObj.clientWidth && param.distance>=0) || (0===xScrollToolbar.offsetLeft && param.distance<=0)) return ;
 					param.distance = param.distance / (params.config.width/param.width);
@@ -314,7 +332,7 @@
 					params.node.scrollTop = params.node.scrollTop + (param.distance / ((this.yScrollObj.clientHeight - yScrollToolbar.offsetHeight)/(params.node.scrollHeight - params.node.clientHeight)));
 				}
 
-				param.from===params.config.id && "[object Function]"===toString.call(params.config.onScroll) && params.config.onScroll(param);
+				param.from===params.config.id && "[object Function]"===toString.call(params.config.onScroll) && params.config.onScroll(param);*/
 			},
 			resize: function() {
 				var params = this.params;
