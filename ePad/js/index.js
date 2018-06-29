@@ -27,6 +27,8 @@
 		// ferula, ellipesstroke, rectstroke, pen, eraser, rect, ellipes, text, line, arrow, color, export, scissors, clear, enlarge, file, handPad
 		defaultConfig = {
 			data: null,
+			noCache: false,
+			noToolbar: false,
 			layout: "leftTop",
 			size: "100%",
 			fontSize: 16,
@@ -97,7 +99,7 @@
 
 // ==============================================================模板===============================================================
 	var tpl1 = '\
-		<div class="pad-wrap @LAYOUT@ @DISABLED@">\
+		<div class="pad-wrap @LAYOUT@ @DISABLED@ @NOTOOLBAR@ @NOTAB@">\
 			<div class="toolbar-wrap">\
 				<ul class="toolbar-list">@TOOLBARS@</ul>\
 			</div>\
@@ -203,32 +205,28 @@
 
 			self.params = params;
 			self.events = {};
+			self.scrollObj = {};
 
 			var scrollBuilder = function(type) {
 				tplDiv.innerHTML = "x"===type?xTpl:yTpl;
+				var ele = tplDiv.removeChild(tplDiv.firstChild);
+				parentNode.appendChild(ele);
+
+				self.scrollObj[type] = {
+					container: ele,
+					toolbar: ele.getElementsByClassName("scroll-toolbar")[0]
+				};
 
 				if("x"===type) {
-					self.xScrollObj = tplDiv.removeChild(tplDiv.firstChild);
-					parentNode.appendChild(self.xScrollObj);
-					params.node.clientWidth<params.node.scrollWidth && self.xScrollObj.classList.remove("pad-hide");
+					params.node.clientWidth<params.node.scrollWidth && ele.classList.remove("pad-hide");
 				} else {
-					self.yScrollObj = tplDiv.removeChild(tplDiv.firstChild);
-					parentNode.appendChild(self.yScrollObj);
-					params.node.clientHeight<params.node.scrollHeight && self.yScrollObj.classList.remove("pad-hide");
+					params.node.clientHeight<params.node.scrollHeight && ele.classList.remove("pad-hide");
 				}
 			};
 
 			Object.defineProperty(this, "disable", {
 				set: function(d) {
 					disable = d;
-
-					if(disable) {
-						self.xScrollObj && self.xScrollObj.classList.add("pad-hide");
-						self.yScrollObj && self.yScrollObj.classList.add("pad-hide");
-					} else {
-						self.xScrollObj && params.node.clientWidth<params.node.scrollWidth && self.xScrollObj.classList.remove("pad-hide");
-						self.yScrollObj && params.node.clientHeight<params.node.scrollHeight && self.yScrollObj.classList.remove("pad-hide");
-					}
 				},
 				get: function() {
 					return disable;
@@ -244,22 +242,18 @@
 
 			var mousemoveHandler = function() {
 				var args = [].slice.call(arguments, 0),
+					obj = self.scrollObj[activeType],
 					e = args[0] || window.event;
 
 				if("x"===activeType) {
-					var x = e.x || e.clientX,
-						scale = (self.xScrollObj.clientWidth - self.xScrollObj.getElementsByClassName("scroll-toolbar")[0].offsetWidth)/params.node.scrollWidth,
-						data = {type: "x", distance: x-startPoint.x, from: params.id, scale: scale};
+					var x = e.x || e.clientX, data = {type: "x", distance: x-startPoint.x, from: params.id, scale: obj.moveWidth/obj.coverWidth};
 					startPoint.x = x;
 				} else {
-					var y = e.y || e.clientY,
-						scale = (self.yScrollObj.clientHeight - self.yScrollObj.getElementsByClassName("scroll-toolbar")[0].offsetWidth)/params.node.scrollHeight,
-						data = {type: "y", distance: y-startPoint.y, from: params.id, scale: scale};
+					var y = e.y || e.clientY, data = {type: "y", distance: y-startPoint.y, from: params.id, scale: obj.moveHeight/obj.coverHeight};
 					startPoint.y = y;
 				}
 
 				self.scroll(data);
-				self.fire("scroll", data);
 			};
 
 			var mouseupHandler = function() {
@@ -267,8 +261,8 @@
 				ele.delEvent(document, "mouseup", mouseupHandler);
 			};
 
-			if(self.xScrollObj) {
-				ele.addEvent(self.xScrollObj.getElementsByClassName("scroll-toolbar")[0], "mousedown", function() {
+			if(self.scrollObj.x) {
+				ele.addEvent(self.scrollObj.x.toolbar, "mousedown", function() {
 					if(disable) return ;
 
 					var args = [].slice.call(arguments, 0),
@@ -281,8 +275,8 @@
 				});
 			}
 
-			if(self.yScrollObj) {
-				ele.addEvent(self.yScrollObj.getElementsByClassName("scroll-toolbar")[0], "mousedown", function() {
+			if(self.scrollObj.y) {
+				ele.addEvent(self.scrollObj.y.toolbar, "mousedown", function() {
 					if(disable) return ;
 
 					var args = [].slice.call(arguments, 0),
@@ -300,55 +294,75 @@
 			constructor: Scroll,
 			scroll: function(param) {
 				var params = this.params,
-					scrollObj = "x"===param.type?this.xScrollObj:this.yScrollObj,
-					scrollToolbar = scrollObj.getElementsByClassName("scroll-toolbar")[0];
+					obj = this.scrollObj[param.type],
+					container = obj.container,
+					toolbar = obj.toolbar;
 
-				if(param.from===this.params.id) {
-					if("x"===param.type) {
-						var offsetLeft = scrollToolbar.offsetLeft + param.distance;
-						scrollToolbar.style.left = Math.max(0, Math.min(offsetLeft, scrollObj.clientWidth - scrollToolbar.offsetWidth)) + "px";
-						params.node.scrollLeft = params.node.scrollLeft + (param.distance/((scrollObj.clientWidth - scrollToolbar.offsetWidth)/params.node.offsetWidth));
+				if("x"===param.type) {
+					var offsetLeft = toolbar.offsetLeft + param.distance;
+					toolbar.style.left = Math.max(0, Math.min(offsetLeft, container.clientWidth - toolbar.offsetWidth)) + "px";
+					params.node.scrollLeft = params.node.scrollLeft + (param.distance/(obj.moveWidth/obj.coverWidth))/((obj.moveWidth/obj.coverWidth)/param.scale);
+				} else {
+					var offsetTop = toolbar.offsetTop + param.distance;
+					toolbar.style.top = Math.max(0, Math.min(offsetTop, container.clientHeight - toolbar.offsetHeight)) + "px";
+					params.node.scrollTop = params.node.scrollTop + (param.distance/(obj.moveHeight/obj.coverHeight))/((obj.moveHeight/obj.coverHeight)/param.scale);
+				}
+
+				if(void(0)==this.params.id || param.from===this.params.id) {
+					this.fire("scroll", param);
+				}
+			},
+			toOrigin: function(type) {
+				var params = this.params;
+
+				if(!type) {
+					this.scrollObj.x.toolbar.style.left = 0;
+					this.scrollObj.y.toolbar.style.top = 0;
+					params.node.scrollLeft = 0;
+					params.node.scrollTop = 0;
+				} else {
+					if("x"===type) {
+						this.scrollObj.x.toolbar.style.left = 0;
+						params.node.scrollLeft = 0;
 					} else {
-						var offsetTop = scrollToolbar.offsetTop + param.distance;
-						scrollToolbar.style.top = Math.max(0, Math.min(offsetTop, scrollObj.clientHeight - scrollToolbar.offsetHeight)) + "px";
-						params.node.scrollTop = params.node.scrollTop + (param.distance/((scrollObj.clientHeight - scrollToolbar.offsetHeight)/params.node.offsetHeight));
+						this.scrollObj.y.toolbar.style.top = 0;
+						params.node.scrollTop = 0;
 					}
-				} else {
-
 				}
-				
-
-				/*if("x"===param.type) {
-					var xScrollToolbar = this.xScrollObj.getElementsByClassName("scroll-toolbar")[0];
-					if((xScrollToolbar.offsetLeft + xScrollToolbar.offsetWidth===this.xScrollObj.clientWidth && param.distance>=0) || (0===xScrollToolbar.offsetLeft && param.distance<=0)) return ;
-					param.distance = param.distance / (params.config.width/param.width);
-					xScrollToolbar.style.left = Math.max(0, Math.min(xScrollToolbar.offsetLeft + param.distance, this.xScrollObj.clientWidth - xScrollToolbar.offsetWidth)) + "px";
-					params.node.scrollLeft = params.node.scrollLeft + (param.distance / ((this.xScrollObj.clientWidth - xScrollToolbar.offsetWidth)/(params.node.scrollWidth - params.node.clientWidth)));
-				} else {
-					var yScrollToolbar = this.yScrollObj.getElementsByClassName("scroll-toolbar")[0];
-					if((yScrollToolbar.offsetTop + yScrollToolbar.offsetHeight===this.yScrollObj.clientHeight && param.distance>=0) || (0===yScrollToolbar.offsetTop && param.distance<=0)) return ;
-					param.distance = param.distance / (params.config.height/param.height);
-					yScrollToolbar.style.top = Math.max(0, Math.min(yScrollToolbar.offsetTop + param.distance, this.yScrollObj.clientHeight - yScrollToolbar.offsetHeight)) + "px";
-					params.node.scrollTop = params.node.scrollTop + (param.distance / ((this.yScrollObj.clientHeight - yScrollToolbar.offsetHeight)/(params.node.scrollHeight - params.node.clientHeight)));
-				}
-
-				param.from===params.config.id && "[object Function]"===toString.call(params.config.onScroll) && params.config.onScroll(param);*/
 			},
 			resize: function() {
 				var params = this.params;
 
-				if(this.xScrollObj) {
-					var xScrollToolbar = this.xScrollObj.getElementsByClassName("scroll-toolbar")[0],
+				if(this.scrollObj.x) {
+					var obj = this.scrollObj.x,
+						toolbar = obj.toolbar,
 						coverWidth = params.node.scrollWidth - params.node.clientWidth;
 					
-					xScrollToolbar.style.width = Math.max(this.xScrollObj.clientWidth - coverWidth/10, 50) + "px";
+					toolbar.style.width = Math.max(obj.container.clientWidth - coverWidth/10, 50) + "px";
+					obj.coverWidth = coverWidth;
+					obj.moveWidth = obj.container.clientWidth - toolbar.offsetWidth;
+
+					if(0===obj.moveWidth) {
+						obj.container.classList.add("pad-hide");
+					} else {
+						obj.container.classList.remove("pad-hide");
+					}
 				}
 
-				if(this.yScrollObj) {
-					var yScrollToolbar = this.yScrollObj.getElementsByClassName("scroll-toolbar")[0],
+				if(this.scrollObj.y) {
+					var obj = this.scrollObj.y,
+						toolbar = obj.toolbar,
 						coverHeight = params.node.scrollHeight - params.node.clientHeight;
 
-					yScrollToolbar.style.height = Math.max(this.yScrollObj.clientHeight - coverHeight/10, 50) + "px";
+					toolbar.style.height = Math.max(obj.container.clientHeight - coverHeight/10, 50) + "px";
+					obj.coverHeight = coverHeight;
+					obj.moveHeight = obj.container.clientHeight - toolbar.offsetHeight;
+
+					if(0===obj.moveHeight) {
+						obj.container.classList.add("pad-hide");
+					} else {
+						obj.container.classList.remove("pad-hide");
+					}
 				}
 			},
 			addEvent: function(eventName, fn) {
@@ -400,9 +414,7 @@
 	var data = {
 		// 生成uuid
 		get uuid() {
-			var len = 20, str = ""
-			for(;str.length<len;str+=Math.random().toString().substr(2));
-			return str.substr(0, len);
+			return Date.now();
 		},
 		// 对白板数进行缩放
 		// 主要应对白板的缩放后的重绘及从一个白板传递到另一个白板的数据
@@ -653,8 +665,8 @@
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
-				wScale = self.params.width/params.width,
-				hScale = self.params.height/params.height,
+				wScale = canvas.width/params.width,
+				hScale = canvas.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -688,8 +700,8 @@
 				mode = params.mode,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
-				wScale = self.params.width/params.width,
-				hScale = self.params.height/params.height,
+				wScale = canvas.width/params.width,
+				hScale = canvas.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -721,8 +733,8 @@
 				mode = params.mode,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
-				wScale = self.params.width/params.width,
-				hScale = self.params.height/params.height,
+				wScale = canvas.width/params.width,
+				hScale = canvas.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -765,8 +777,8 @@
 				mode = params.mode,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
-				wScale = self.params.width/params.width,
-				hScale = self.params.height/params.height,
+				wScale = canvas.width/params.width,
+				hScale = canvas.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -823,8 +835,8 @@
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
-				wScale = self.params.width/params.width,
-				hScale = self.params.height/params.height,
+				wScale = canvas.width/params.width,
+				hScale = canvas.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -848,59 +860,47 @@
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:("file"===params.type?self.fileCanvas:self.mainCanvas)),
 				data = params.data,
-				img = new Image(),
+				img = self.tplImage,
 				ctx = canvas.getContext("2d");
 
-			img.setAttribute("crossOrigin", "anonymous");
 			img.src = data[0];
-			var cw = canvas.clientWidth, ch = canvas.clientHeight;
 
 			img.onload = function() {
-				var imgWidth = img.width,
+				if(!isCreateImage && 0!=params.status && "file"===params.type) self.tab.resizePad(self.params.width, self.params.height);
+
+				var cw = canvas.width, 
+					ch = canvas.height,
+					wScale = cw/params.width,
+					hScale = ch/params.height,
+					imgWidth = img.width,
 					imgHeight = img.height,
-					dw = cw - imgWidth, 
-					dh = ch - imgHeight;
+					sImgWidth = imgWidth*wScale,
+					sImgHeight = imgHeight*hScale,
+					dw = cw - sImgWidth, 
+					dh = ch - sImgHeight;
 
 				ctx.save();
 
 				if(dw>=0 && dh>=0) {
 					var x = dw/2, y = dh/2;
-					ctx.drawImage(img, x, y);
-					params.fileWidth = imgWidth;
-					params.fileHeight = imgHeight;
-					data[1] = x;
-					data[2] = y;
+					ctx.drawImage(img, x, y, sImgWidth, sImgHeight);
 				} else {
 					if(!params.original) {
 						var cwhp = cw/ch, iwhp = img.width/img.height;
 
 						if(cwhp>iwhp) {
 							ctx.drawImage(img, (cw-ch*iwhp)/2, 0, ch*iwhp, ch);
-							params.fileWidth = ch*iwhp;
-							params.fileHeight = ch;
-							data[1] = (cw-ch*iwhp)/2;
-							data[2] = 0;
 						} else {
 							ctx.drawImage(img, 0, (ch-cw/iwhp)/2, cw, cw/iwhp);
-							params.fileWidth = cw;
-							params.fileHeight = cw/iwhp;
-							data[1] = 0;
-							data[2] = (ch-cw/iwhp)/2;
 						}
 					} else {
-						cw = cw>imgWidth?cw:imgWidth;
-						ch = ch>imgHeight?ch:imgHeight;
-						dw = cw - imgWidth, 
-						dh = ch - imgHeight;
+						cw = dw>=0?self.params.width:sImgWidth;
+						ch = dh>=0?self.params.height:sImgHeight;
+						dw = cw - sImgWidth;
+						dh = ch - sImgHeight;
 						var x = dw/2, y = dh/2;
-						canvas.width = cw;
-						canvas.height = ch;
-						params.fileWidth = imgWidth;
-						params.fileHeight = imgHeight;
-						data[1] = x;
-						data[2] = y;
 						self.tab.resizePad(cw, ch);
-						ctx.drawImage(img, x, y);
+						ctx.drawImage(img, x, y, sImgWidth, sImgHeight);
 					}
 				}
 
@@ -914,9 +914,8 @@
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:self.mainCanvas),
 				data = params.data,
-				wScale = self.params.width/params.width,
-				hScale = self.params.height/params.height,
-				scale = wScale<hScale?wScale:hScale,
+				wScale = canvas.width/params.width,
+				hScale = canvas.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			if(0===params.status) {
@@ -940,7 +939,7 @@
 				    var y4 = data.y + cos;
 
 				    ctx.save();
-				    ctx.scale(scale, scale);
+				    ctx.scale(wScale, hScale);
 		        	ctx.beginPath();
 		        	ctx.arc(data.x, data.y, data.size/2, 0, 2*Math.PI);
 		        	ctx.clip();
@@ -957,7 +956,7 @@
 				    var y4 = data.y + data.size/2;
 
 				    ctx.save();
-				    ctx.scale(scale, scale);
+				    ctx.scale(wScale, hScale);
 		        	ctx.beginPath();
 		        	ctx.rect(x1, y1, data.size, data.size);
 		        	ctx.clip();
@@ -966,7 +965,7 @@
 				}
 				
 				ctx.save();
-				ctx.scale(scale, scale);
+				ctx.scale(wScale, hScale);
 				ctx.beginPath();
 				ctx.moveTo(x1, y1);
 	        	ctx.lineTo(x2, y2);
@@ -1022,14 +1021,13 @@
 				canvas = self.mouseIconCanvas,
 				data = params.data,
 				mode = params.mode,
-				wScale = self.params.width/params.width,
-				hScale = self.params.height/params.height,
-				scale = wScale<hScale?wScale:hScale,
+				wScale = canvas.width/params.width,
+				hScale = canvas.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			canvas.width = canvas.width;
 			if(-1===data[0] || -1===data[1]) return ;
-			ctx.scale(scale, scale);
+			ctx.scale(wScale, hScale);
 			ctx.beginPath();
 
 			if(0===mode) {
@@ -1048,14 +1046,13 @@
 				canvas = self.mouseIconCanvas,
 				data = params.data,
 				ferulaSize = self.params.ferulaSize,
-				wScale = self.params.width/params.width,
-				hScale = self.params.height/params.height,
-				scale = wScale<hScale?wScale:hScale,
+				wScale = canvas.width/params.width,
+				hScale = canvas.height/params.height,
 				ctx = canvas.getContext("2d");
 
 			canvas.width = canvas.width;
 			if(-1===data[0] || -1===data[1]) return ;
-			ctx.scale(scale, scale);
+			ctx.scale(wScale, hScale);
 			ctx.beginPath();
 			ctx.fillStyle = "red";
 			ctx.arc(data[0], data[1], ferulaSize, 0, 2*Math.PI);
@@ -1086,9 +1083,11 @@
 				pageMap = {},
 				tabWrap = wrap.getElementsByClassName("pad-tab-list")[0];
 
-			self.build = function(canvas, type, _data, _tab, del) {
+			self.build = function(canvas, type, _data, _tab, from) {
 				if(!canvas) return ;
+
 				var that = this,
+					del = from === that.params.id,
 					_id = _tab && _tab.id?_tab.id:(0===type?0:data.uuid),
 					_tabTpl = tabTpl.replace(/@LABEL@/g, _tab && _tab.name?_tab.name:tabNameMap[type]).replace(/@DELETEBTN@/g, del?delTpl:"");
 
@@ -1130,7 +1129,7 @@
 					data: dataMap[_id],
 					type: type,
 					splitPage: 0,
-					del: del
+					from: from
 				};
 
 				if(_tab && _tab.name) that.container[_id].tabName = _tab.name;
@@ -1164,7 +1163,7 @@
 						[].push.apply(dataMap[key], page.getData());
 					}
 
-					window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
+					!self.params.noCache && window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
 					clearTimeout(it);
 					saving = false;
 				}, self.params.autoSaveTime*1000);
@@ -1176,27 +1175,29 @@
 				var self = this,
 					li = tabMap[_id],
 					index = idList.indexOf(_id);
+
 				delete tabMap[_id];
 				delete dataMap[_id];
 				delete canvasMap[_id];
 				delete self.container[_id];
-
-				if(pageMap[_id]) {
-					pageMap[_id].hide();
-					delete pageMap[_id];
-				}
+				delete pageMap[_id];
 
 				tabWrap.removeChild(li);
 				idList.splice(index, 1);
-				_id = idList[index-1>=0?index-1:0];
-				self.tab.active.call(self, _id);
-				window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
+
+				if(activeObj.id===_id) {
+					_id = idList[Math.max(index-1, 0)];
+					self.tab.active.call(self, _id);
+				}
+				
+				!self.params.noCache && window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
 			};
 
 			self.active = function(_id) {
 				var self = this, _data = dataMap[_id];
 				ele.removeClass(activeObj.tab, "active");
 				self.tab.resizePad();
+				self.scroll.toOrigin();
 
 				if(activeObj.page) {
 					activeObj.page.hide();
@@ -1267,12 +1268,12 @@
 					}
 				}
 
-				window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
+				!self.params.noCache && window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
 			};
 
 			self.cleanCache = function() {
 				var self = this;
-				window.localStorage.removeItem(self.id+"_pad");
+				!self.params.noCache && window.localStorage.removeItem(self.id+"_pad");
 			};
 
 			self.setPage = function(id, page) {
@@ -1350,6 +1351,7 @@
 			var pageNumber = pageNumberInput.value;
 			
 			self.go(pageNumber, function() {
+				pageNumber = pageNumberInput.value;
 				that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber, _data[pageNumber-1][0]);
 			});
 		});
@@ -1359,6 +1361,20 @@
 				this.value = RegExp.$1;
 			} else {
 				this.value = currentPage;
+			}
+		});
+
+		ele.addEvent(pageNumberInput, "keypress", function() {
+			var args = [].slice.call(arguments, 0),
+				e = window.event || args[0];
+
+			if(13===e.keyCode || 13===e.which) {
+				var pageNumber = pageNumberInput.value;
+			
+				self.go(pageNumber, function() {
+					pageNumber = pageNumberInput.value;
+					that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber, _data[pageNumber-1][0]);
+				});
 			}
 		});
 
@@ -1403,7 +1419,6 @@
 		this.go = function(pageNumber, callback) {
 			pageNumber = pageNumber<=1?1:pageNumber;
 			pageNumber = pageNumber>=total?total:pageNumber;
-			that.mainCanvas.width = that.mainCanvas.width;
 
 			render(pageNumber, 0, function() {
 				"[object Function]" === toString.call(callback) && callback();
@@ -1437,15 +1452,28 @@
 
 		this.show = function() {
 			pageWrap.innerHTML = "";
-			_data.length>1 && pageWrap.appendChild(pageEle);
-			that.page = self;
+
+			if(_data.length>1) {
+				pageWrap.appendChild(pageEle);
+
+				switch(that.params.splitpageLayout) {
+					case "left":
+					pageWrap.style.left = "10px";
+					break;
+					case "center":
+					pageWrap.style.left = (pageWrap.parentNode.clientWidth - pageWrap.offsetWidth)/2 + "px";
+					break;
+					default:
+					pageWrap.style.right = "10px";
+				}
+			}
+			
 			this.go(currentPage);
 		};
 
 		this.hide = function() {
-			if(that.page!=self) return ;
+			if(that.tab.getActive().page!=self) return ;
 			_data.length>1 && pageWrap.removeChild(pageEle);
-			delete that.page;
 		};
 
 		this.getPageNumber = function() {
@@ -1465,8 +1493,8 @@
 				_data[i] = [{
 					data: [d, 0, 0],
 					pageNumber: i+1,
-					width: that.params.width,
-					height: that.params.height,
+					width: params.width || that.params.width,
+					height: params.height || that.params.height,
 					status: 1,
 					type: "file",
 					from: params.from,
@@ -1535,17 +1563,12 @@
 				}
 			});
 
-			_data.status && that.page.push.call(that, _data);
+			_data.status && that.tab.getActive().page.push.call(that, _data);
 		};
 
 		that.params.disable && this.disable();
 		that.tab.saveData.call(that);
-
-		if(show) {
-			pageWrap.innerHTML = "";
-			_data.length>1 && pageWrap.appendChild(pageEle);
-			params.from === that.params.id && self.go(1);
-		}
+		show && this.show();
 	}
 
 	Page.prototype = {
@@ -1557,15 +1580,21 @@
 			return new WPad(params);
 		}
 
+		var tplImage = new Image();
+		tplImage.setAttribute("crossOrigin", "anonymous");
+
 		var that = {
 			pad: this,
 			params: params,
 			waitList: [],
 			container: {},
+			tplImage: tplImage,
 			id: params.id || padCount++,
 			render: function(_data) {
-				if(that.page) {
-					that.page.render.call(that, _data, function(d) {
+				var activeTab = that.tab.getActive();
+
+				if(activeTab.page) {
+					activeTab.page.render.call(that, _data, function(d) {
 						"[object Function]"===toString.call(params.onRender) && params.onRender(d);
 					});
 				} else {
@@ -1576,8 +1605,6 @@
 			},
 			mouseRender: function(_data) {
 				mouse.render.call(that, _data);
-				_data.width = that.params.width;
-				_data.height = that.params.height;
 
 				if(params.onMousemove) {
 					var outData = data.copy(_data), obj = {}, activeTab = that.tab.getActive();
@@ -1605,9 +1632,9 @@
 						that.tab.render.call(that, realData);
 					} else {
 						if(activeTab.page.getPageNumber() === val.pageNumber) {
-							that.page.render.call(that, realData);
+							activeTab.page.render.call(that, realData);
 						} else {
-							realData.status && that.page.push.call(that, realData, +val.pageNumber);
+							realData.status && activeTab.page.push.call(that, realData, +val.pageNumber);
 						}
 					}
 				} else {
@@ -1622,7 +1649,7 @@
 							}
 						}
 					} else {
-						that.tab.build.call(that, that.fileCanvas, 1, [realData], {id: key}, false);
+						that.tab.build.call(that, that.fileCanvas, 1, [realData], {id: key}, realData.from);
 					}
 				}
 			}
@@ -1642,7 +1669,7 @@
 				console.error("TypeError: data must be Object");
 				return ;
 			}
-			
+	
 			render(_data);
 		};
 
@@ -1682,6 +1709,10 @@
 
 		this.createImage = function() {
 			return that.mainCanvas.toDataURL();
+		};
+
+		this.getData = function(tabId) {
+			return that.container[tabId] || that.container;
 		};
 
 		this.changeTab = function(id) {
@@ -1788,12 +1819,16 @@
 		});
 
 		false!=params.fullScreen && (toolbarStr = toolbarStr + tpl5);
-		var __str__ = tpl1.replace(/@LAYOUT@/g, layoutClassMap[params.layout]+(params.vertical?" vertical":"")).replace(/@TOOLBARS@/g, toolbarStr).replace(/@DISABLED@/g, params.disable?"disabled":"");
-		var _data = params.data || JSON.parse(window.localStorage.getItem(self.id+"_pad"));
+		var __str__ = tpl1.replace(/@LAYOUT@/g, layoutClassMap[params.layout]+(params.vertical?" vertical":""))
+							.replace(/@TOOLBARS@/g, toolbarStr)
+							.replace(/@DISABLED@/g, params.disable?"disabled":"")
+							.replace(/@NOTOOLBAR@/g, params.noToolbar?"no-toolbar":"")
+							.replace(/@NOTAB@/g, params.noTab?"no-tab":"");
+		var _data = params.data || (!params.noCache?JSON.parse(window.localStorage.getItem(self.id+"_pad")):null);
 		wrap.innerHTML = __str__;
 		this.toolbarMap = toolbarMap;
 		
-		var	canvasWrap = wrap.getElementsByClassName("can-wrap")[0],
+		var canvasWrap = wrap.getElementsByClassName("can-wrap")[0],
 			toolbarWrap = wrap.getElementsByClassName("toolbar-list")[0],
 			fullScreenBtn = toolbarWrap.getElementsByClassName("full-screen-btn")[0];
 
@@ -1809,37 +1844,43 @@
 		var createSize = function() {
 			var canvasWrapWidth = canvasWrap.clientWidth, canvasWrapHeight = canvasWrap.clientHeight;
 
-			if(params.size) {
-				if(/^(\s*\d+\s*)\*(\s*\d+\s*)$/.test(params.size)) {
-					var sizeArr = params.size.split(/\*/);
-
-					canvasWrapWidth = +sizeArr[0];
-					canvasWrapHeight = +sizeArr[1];
-				}
-
-				if(/^(\s*\d+\s*):(\s*\d+\s*)$/.test(params.size)) {
-					var scaleArr = params.size.split(/\:/),
-						_canvasWrapWidth = canvasWrap.clientWidth,
+			switch(true) {
+				case /^\s*(\d+)\s*\*\s*(\d+)\s*$/.test(params.size):
+					canvasWrapWidth = +RegExp.$1;
+					canvasWrapHeight = +RegExp.$2;
+				break;
+				case /^\s*(\d+)\s*:\s*(\d+)\s*$/.test(params.size):
+					var _canvasWrapWidth = canvasWrap.clientWidth,
 						_canvasWrapHeight = canvasWrap.clientHeight;
 
 					switch(true) {
-						case scaleArr[0]/scaleArr[1]>_canvasWrapWidth/_canvasWrapHeight:
-						canvasWrapWidth = _canvasWrapHeight/scaleArr[1]*scaleArr[0];
-						canvasWrapHeight = _canvasWrapHeight;
-						break;
-						case scaleArr[0]/scaleArr[1]<_canvasWrapWidth/_canvasWrapHeight:
+						case RegExp.$1/RegExp.$2>_canvasWrapWidth/_canvasWrapHeight:
 						canvasWrapWidth = _canvasWrapWidth;
-						canvasWrapHeight = _canvasWrapWidth/scaleArr[0]*scaleArr[1];
+						canvasWrapHeight = _canvasWrapWidth/RegExp.$1*RegExp.$2;
+						break;
+						case RegExp.$1/RegExp.$2<_canvasWrapWidth/_canvasWrapHeight:
+						canvasWrapHeight = _canvasWrapHeight;
+						canvasWrapWidth = _canvasWrapHeight/RegExp.$2*RegExp.$1;
 						break;
 						default:
 						canvasWrapWidth = _canvasWrapWidth;
 						canvasWrapHeight = _canvasWrapHeight;
 					}
-				}
+				break;
+				case /^\s*(\d+)%\s*$/.test(params.size):
+					var _canvasWrapWidth = canvasWrap.clientWidth,
+						_canvasWrapHeight = canvasWrap.clientHeight;
+
+					canvasWrapWidth = _canvasWrapWidth/100*RegExp.$1;
+					canvasWrapHeight = _canvasWrapHeight/100*RegExp.$1;
+				break;
+				default:
+					canvasWrapWidth = canvasWrap.clientWidth;
+					canvasWrapHeight = canvasWrap.clientHeight;
 			}
 
-			params.width = canvasWrapWidth;
-			params.height = canvasWrapHeight;
+			params.width = canvasWrapWidth>>0;
+			params.height = canvasWrapHeight>>0;
 		};
 
 		ele.addEvent(canvasWrap, eventMap["wheel"], function() {
@@ -1854,9 +1895,10 @@
 				e.stopPropagation();
 			}
 
-			if(true===self.params.disable) return ;
-			var data = {type: "y", distance: ("DOMMouseScroll"===e.type?(3===e.detail?100:-100):(e.deltaY))/10, from: params.id, width: params.width, height: params.height};
-			scrollObj.scroll(data);
+			if(true!=scrollObj.disable && scrollObj.scrollObj.y.coverHeight>0) {
+				var data = {type: "y", distance: ("DOMMouseScroll"===e.type?(3===e.detail?100:-100):(e.deltaY))/10, from: params.id, scale: scrollObj.scrollObj.y.moveHeight/scrollObj.scrollObj.y.coverHeight};
+				scrollObj.scroll(data);
+			}
 		});
 
 		var oldAvilWidth = canvasWrap.clientWidth, oldAvilHeight = canvasWrap.clientHeight;
@@ -1876,16 +1918,22 @@
 
 		var resizePad = function(w, h) {
 			var width = w || params.width, height = h || params.height;
-			mainCanvas.width = width;
-			mainCanvas.height = height;
-			bufferCanvas1.width = width;
-			bufferCanvas1.height = height;
-			bufferCanvas2.width = width;
-			bufferCanvas2.height = height;
-			bufferCanvas3.width = width;
-			bufferCanvas3.height = height;
-			bufferCanvas4.width = width;
-			bufferCanvas4.height = height;
+
+			mainCanvas.width = bufferCanvas1.width = bufferCanvas2.width = bufferCanvas3.width = bufferCanvas4.width = width;
+			mainCanvas.height = bufferCanvas1.height = bufferCanvas2.height = bufferCanvas3.height = bufferCanvas4.height = height;
+			mainCanvas.style.left = bufferCanvas1.style.left = bufferCanvas2.style.left = bufferCanvas3.style.left = bufferCanvas4.style.left = 0;
+			mainCanvas.style.top = bufferCanvas1.style.top = bufferCanvas2.style.top = bufferCanvas3.style.top = bufferCanvas4.style.top = 0;
+
+			if(width<canvasWrap.clientWidth) {
+				var left = (canvasWrap.clientWidth - width)/2;
+				mainCanvas.style.left = bufferCanvas1.style.left = bufferCanvas2.style.left = bufferCanvas3.style.left = bufferCanvas4.style.left = left + "px";
+			}
+
+			if(height<canvasWrap.clientHeight) {
+				var top = (canvasWrap.clientHeight - height)/2;
+				mainCanvas.style.top = bufferCanvas1.style.top = bufferCanvas2.style.top = bufferCanvas3.style.top = bufferCanvas4.style.top = top + "px";
+			}
+
 			scrollObj && scrollObj.resize();
 		};
 
@@ -1900,11 +1948,15 @@
 
 		var scrollObj = scroll.init({
 			node: canvasWrap,
-			config: params
+			id: params.id
 		});
 
 		scrollObj.disable = params.disable;
-		scrollObj.resize();
+		self.scroll = scrollObj;
+
+		scrollObj.addEvent("scroll", function(data) {
+			"[object Function]"===toString.call(params.onScroll) && params.onScroll(data);
+		});
 		
 		Object.defineProperty(self.tab, "resizePad", {
 			value: resizePad
@@ -1930,12 +1982,18 @@
 
 		var exportImage = function() {
 			var uuid = data.uuid,
-				image = self.mainCanvas.toDataURL(),
 				downloadEle = document.createElement("A"),
+				createImageCanvas = self.createImageCanvas,
+				ctx = createImageCanvas.getContext("2d");
+
+			ctx.drawImage(self.fileCanvas, 0, 0);
+			ctx.drawImage(self.mainCanvas, 0, 0);
+
+			var	image = createImageCanvas.toDataURL(),
 				imageDataArr = image.split(","),
 				bStr = atob(imageDataArr[1]),
 				len = bStr.length,
-				tArr = new Uint8Array(len);
+				tArr = new Uint8ClampedArray(len);
 
 			while(len--) {
 				tArr[len] = bStr.charCodeAt(len);
@@ -1946,10 +2004,11 @@
 			downloadEle.download = uuid + ".png";
 			downloadEle.click();
 			URL.revokeObjectURL(url);
+			createImageCanvas.width = createImageCanvas.width;
 		};
 
 		self.pad.resize = function(w, h) {
-			!isNaN(w)&&!isNaN(h)?resizePad(w, h):resizePad();
+			!isNaN(w) && !isNaN(h) && resizePad(w, h);
 			self.tab.active.call(self, self.tab.getActive().id);
 		};
 
@@ -1983,6 +2042,8 @@
 					data: files, 
 					show: isShow, 
 					that: self,
+					width: params.width,
+					height: params.height,
 					from: from,
 					tabId: newTab?id:activeTab.id,
 					original: params.original || false
@@ -1993,13 +2054,15 @@
 
 				if(self.params.id===from && "[object Function]"===toString.call(self.params.onShowFiles)) {
 					params.from = from;
+					params.width = self.params.width;
+					params.height = self.params.height;
 					self.params.onShowFiles(params);
 				}
 			};
 
 			if(newTab) {
 				var _tab = {id: tabId, name: tabName};
-				var id = self.tab.build.call(self, bufferCanvas4, 1, null, _tab, from===self.params.id);
+				var id = self.tab.build.call(self, bufferCanvas4, 1, null, _tab, from);
 				params.tabId = id;
 
 				if(isShow) {
@@ -2160,12 +2223,23 @@
 
 			if(!current) {
 				if(active) {
-					if(true===self.params.disable) return ;
+					if(true===scrollObj.disable) return ;
 					var moveX = mouseX - posX, moveY = mouseY - posY;
-					scrollObj.scroll({type: "x", distance: moveX, from: params.id, width: params.width, height: params.height});
-					scrollObj.scroll({type: "y", distance: moveY, from: params.id, width: params.width, height: params.height});
-					mouseX = posX;
-					mouseY = posY;
+
+					if(isMobile) {
+						moveX /= 10;
+						moveY /= 10;
+					}
+
+					if(scrollObj.scrollObj.x.coverWidth>0) {
+						scrollObj.scroll({type: "x", distance: moveX, from: params.id, scale: scrollObj.scrollObj.x.moveWidth/scrollObj.scrollObj.x.coverWidth});
+						mouseX = posX;
+					}
+
+					if(scrollObj.scrollObj.y.coverHeight>0) {
+						scrollObj.scroll({type: "y", distance: moveY, from: params.id, scale: scrollObj.scrollObj.y.moveHeight/scrollObj.scrollObj.y.coverHeight});
+						mouseY = posY;
+					}
 				}
 			} else {
 				var item = current.name.toLowerCase();
@@ -2184,14 +2258,6 @@
 				} else {
 					current.mouseRender && current.mouseRender.call(self, pos);
 				}
-			}
-
-			if(window.event) {
-				e.returnValue = false;
-				e.cancelBubble = true;
-			} else {
-				e.preventDefault();
-				e.stopPropagation();
 			}
 		});
 
@@ -2244,7 +2310,6 @@
 
 		ele.addEvent(canvasWrap, "mouseleave", function() {
 			current && current.destory.call(self);
-			// bufferCanvas1.width = bufferCanvas1.width;
 		});
 
 		self.bufferCanvas = bufferCanvas2;
@@ -2255,7 +2320,7 @@
 		} else {
 			for(var key in _data) {
 				var val = _data[key];
-				var _n = self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, val.type, val.data, {id: key, name: val.tabName}, val.del);
+				var _n = self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, val.type, val.data, {id: key, name: val.tabName}, val.from);
 
 				if(val.splitPage) {
 					var pageObj = new Page({
@@ -2277,6 +2342,7 @@
 		init: function(params) {
 			var _params = data.copy({}, defaultConfig);
 			_params = data.copy(_params, params);
+			_params.id = void(0)==_params.id?data.uuid:_params.id;
 			var pad = new WPad(_params);
 			void(0)!=_params.id && (padMap[_params.id] = pad);
 			padTab.push(pad);

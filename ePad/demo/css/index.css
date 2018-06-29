@@ -11,13 +11,13 @@ ul, li {
 }
 
 #pad1 {
-	width: 800;
-	height: 500;
+	width: 49%;
+	height: 80%;
 	display: inline-block;
 }
 
 #pad2 {
-	width: 520px;
-	height: 330px;
+	width: 49%;
+	height: 50%;
 	display: inline-block;
 }

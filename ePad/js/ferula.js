@@ -24,7 +24,7 @@
 		// 鼠标绘制接口
 		mouseRender: function(data) {
 			var self = this;
-			data = {type: "ferula", data: [data.x, data.y], from: self.params.id};
+			data = {type: "ferula", data: [data.x, data.y], from: self.params.id, width: self.mainCanvas.width, height: self.mainCanvas.height};
 			pos = data;
 			self.mouseRender.call(self, data);
 		},

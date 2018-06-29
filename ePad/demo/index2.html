@@ -1,0 +1,120 @@
+<!DOCTYPE>
+<html>
+<head>
+	<title></title>
+	<meta charset="utf-8">
+	<link rel="stylesheet" type="text/css" href="/icon/iconfont.css">
+  <!-- <link rel="stylesheet" type="text/css" href="./index.css"> -->
+  <link rel="stylesheet" type="text/css" href="/dist/css/index.min.css">
+  <link rel="stylesheet" type="text/css" href="/demo/css/index.css">
+  <meta name="viewport" content="width=device-width">
+	<style type="text/css">
+		html, body {
+			padding: 0;
+			margin: 0;
+			text-align: center;
+      width: 100%;
+      height: 100%;
+		}
+
+		ul, li {
+			list-style: none;
+		}
+
+		#pad1 {
+            width: 100%;
+            height: 100%;
+			   display: inline-block;
+		}
+
+	</style>
+</head>
+<body>
+	<div id="pad1"></div>
+</body>
+
+<script type="text/javascript" src="/js/pen.js"></script>
+<script type="text/javascript" src="/js/rectangle.js"></script>
+<script type="text/javascript" src="/js/line.js"></script>
+<script type="text/javascript" src="/js/round.js"></script>
+<script type="text/javascript" src="/js/text.js"></script>
+<script type="text/javascript" src="/js/image.js"></script>
+<script type="text/javascript" src="/js/eraser.js"></script>
+<script type="text/javascript" src="/js/ferula.js"></script>
+<script type="text/javascript" src="/js/index.js"></script>
+<!-- <script type="text/javascript" src="/dist/js/index.min.js"></script> -->
+ <script type="text/javascript">
+     var pad1;
+     function initWPad(courseId, liveClassId, size, data) {
+        //alert(size);
+         pad1 = wPad.init({
+                              size: size,
+                              id: courseId + liveClassId,
+                              toolbars:[],
+                              fullScreen:false,
+                              wrap: document.getElementById("pad1"),
+                              background: "#fff",
+                              autoSaveTime: 5,
+                              fontSize: 22,
+                              disable: true,
+                              onRender: function(data) {
+                              },
+                              onMousemove: function(data) {
+                              },
+                              onClear: function(id) {
+                              },
+                              onTabChange: function(id) {
+
+                              },
+                              onTabRemove: function(id) {
+                              },
+                              onPageTurn: function(id, pageNumber, data) {
+                              }
+                              });
+     };
+
+ function deleteLocalStorage() {
+     window.pad1.cleanCache();
+ };
+function cocoMsgCtrl(data) {
+    var result = data.content;
+    var type = result['type'];
+    //alert(JSON.stringify(data));
+    switch (type) {
+        case 'padOrVideo'://切换白板视频
+        break;
+        case 'showPad'://显示白板
+        break;
+        case 'onRender': // 渲染数据
+        window.pad1.render(result['data']);
+        break;
+        case 'onClear': // 清空白板
+        window.pad1.clear(result['data']);
+        break;
+        case 'onTabChange': // 切换tab
+        window.pad1.changeTab(result['data']);
+        break;
+        case 'onTabRemove': // 移除tab
+        window.pad1.removeTab(result['data']);
+        break;
+        case 'onPageTurn':// 切换分页
+        window.pad1.turnPage(result.tid, result.pageNumber);
+        break;
+        case 'onShowFiles': //文档演示
+        var info = result['data'];
+        window.pad1.showFiles(info);
+        break;
+        case 'onMousemove': //文档演示
+        window.pad1.mouseCtrl(result['data']);
+        break;
+        case 'fullscreen'://白板全屏
+        break;
+        case "Scroll":
+        pad1.scroll(result['data']);
+
+    }
+};
+
+// alert(window.devicePixelRatio);
+</script>
+</html>

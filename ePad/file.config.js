@@ -47,6 +47,7 @@ module.exports = {
 		dirname: "/css",
 	},*/
 	/*html: ["./page/*.html"],*/
+	https: false,
 	host: "china.dev.com",	//域名
 	port: 3000,	//端口
 	pagePath: "./",	//从哪里开始找页面

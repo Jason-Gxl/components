@@ -24,7 +24,6 @@ document.getElementById("show_btn").addEventListener("click", function() {
 		newTab: true,
 		isShow: true,
 		tabName: tabNameInput.value || "",
-		from: 1,
 		original: true,
 		tabId: Date.now()
 	};
@@ -34,12 +33,18 @@ document.getElementById("show_btn").addEventListener("click", function() {
 
 var pad1 = wPad.init({
 	id: 1,
-	size: "1920*1080",
+	size: "16:9",
+	//layout: "leftTop",
+	noToolbar: true,
+	noTab: false,
+	vertical: false,
+	splitpageLayout: "center",
 	wrap: document.getElementById("pad1"),
 	background: "#fff",
 	autoSaveTime: 5,
 	disable: false,
-	fontSize: 18,
+	noCache: false,
+	fontSize: 30,
 	// toolbars: ["pen", "line", "text", "image", "export", "clear"],
 	onRender: function(data) {
 		pad2.render(data);
@@ -77,11 +82,13 @@ var pad1 = wPad.init({
 
 var pad2 = wPad.init({
 	id: 2,
-	size: "1920*1080",
+	size: "16:9",
+	noToolbar: true,
 	wrap: document.getElementById("pad2"),
 	background: "#fff",
 	autoSaveTime: 5,
-	disable: true,
+	disable: false,
+	noCache: false,
 	onRender: function(data) {
 		pad1.render(data);
 		console.log("pad2 onRender");
@@ -99,7 +106,7 @@ var pad2 = wPad.init({
 		console.log("pad2 onClear");
 	},
 	onTabChange: function(id) {
-		pad1.changeTab(id);
+		//pad1.changeTab(id);
 		console.log("pad2 onTabChange");
 	},
 	onTabRemove: function(id) {
@@ -111,7 +118,7 @@ var pad2 = wPad.init({
 		console.log("pad2 onPageTurn");
 	},
 	onScroll: function(data) {
-		pad1.scroll(data);
+		// pad1.scroll(data);
 		console.log(data);
 	}
 });

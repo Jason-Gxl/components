@@ -24,7 +24,7 @@
 		// status = 0
 		renderBuffer: function(data) {
 			var self = this;
-			var data = {type: "image", data: [data], status: 0, origin: true, from: self.params.id, width: self.params.width, height: self.params.height};
+			var data = {type: "image", data: [data], status: 0, origin: true, from: self.params.id, width: self.mainCanvas.width, height: self.mainCanvas.height};
 			self.toolbarMap.image.interimBuffer.push(data);
 		},
 		// 绘制最终结果，这里是将数据绘制到持久画板上

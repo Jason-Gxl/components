@@ -1,3 +1,4 @@
+/* 移动端全屏 */
 .pad-full-screen {
 	position: fixed !important; 
 	top: 0 !important; 
@@ -6,6 +7,7 @@
 	height: 100% !important;
 	z-index: 9999999;
 }
+/* 移动端全屏 */
 
 .pad-wrap {
 	position: relative;
@@ -17,30 +19,22 @@
 	overflow: hidden;
 }
 
-.pad-hide {
-	display: none;
+.pad-wrap ul, .pad-wrap li {
+	list-style: none;
+	padding: 0;
+	margin: 0;
 }
 
+.pad-hide {
+	visibility: hidden;
+}
+
+/* 分页 */
 .pad-wrap .split-page-wrap {
 	position: absolute;
-    right: 10px;
     bottom: 10px;
     z-index: 100;
     line-height: 30px;
-}
-
-.pad-wrap .no {
-	color: #cdcdcd !important;
-	cursor: default;
-}
-
-.pad-wrap .split-page-wrap a:hover {
-	text-decoration: none !important;
-	background: #cdcdcd;
-}
-
-.pad-wrap .split-page-wrap .no:hover {
-	background: rgba(0, 0, 0, 0.1) !important;
 }
 
 .pad-wrap .split-page-wrap a {
@@ -58,6 +52,11 @@
     vertical-align: bottom;
 }
 
+.pad-wrap .split-page-wrap a:hover {
+	text-decoration: none !important;
+	background: #cdcdcd;
+}
+
 .pad-wrap .split-page-wrap span {
 	margin-left: 15px;
 	display: inline-block;
@@ -66,10 +65,6 @@
 .pad-wrap .split-page-wrap .go-page-btn {
 	margin-left: 10px;
 	font-size: 14px;
-}
-
-.pad-wrap .split-page-wrap a:hover {
-	text-decoration: underline;
 }
 
 .pad-wrap .split-page-wrap .page-number-input {
@@ -86,12 +81,17 @@
     background: rgba(0, 0, 0, 0.1);
 }
 
-.pad-wrap ul, .pad-wrap li {
-	list-style: none;
-	padding: 0;
-	margin: 0;
+.pad-wrap .split-page-wrap .no {
+	color: #cdcdcd !important;
+	cursor: default;
 }
 
+.pad-wrap .split-page-wrap .no:hover {
+	background: rgba(0, 0, 0, 0.1) !important;
+}
+/* 分页 */
+
+/* toolbar横向布局和纵向布局的样式，外部可以覆写 */
 .pad-wrap .toolbar-wrap {
 	position: absolute;
 	width: 100%;
@@ -99,11 +99,11 @@
 	z-index: 10;
 }
 
-.pad-wrap .toolbar-wrap .toolbar-list {
-	width: 100%;
+.pad-wrap.vertical .toolbar-wrap {
+	width: 40px;
 	height: 100%;
-	background: #ececec;
 }
+/* toolbar横向布局和纵向布局的样式，外部可以覆写 */
 
 .pad-wrap .toolbar-wrap .toolbar-list .toolbar-item {
 	float: left;
@@ -113,6 +113,34 @@
 	box-sizing: border-box;
 	margin-left: 3px;
 	cursor: pointer;
+	position: relative;
+}
+
+.pad-wrap.vertical .toolbar-wrap .toolbar-list .toolbar-item {
+	margin-left: 0;
+}
+
+.vertical .can-wrap-outer {
+	height: calc(100% - 38px) !important;
+	height+: calc(~'100% - 38px') !important;
+	width: calc(100% - 40px) !important;
+	width+: calc(~'100% - 40px') !important; 
+	top: 0 !important;
+}
+
+.left-top.vertical .can-wrap-outer, .left-top.vertical .pad-tab-wrap {
+	left: 40px;
+}
+
+.vertical .pad-tab-wrap {
+	width: calc(100% - 40px) !important;
+	width+: calc(~'100% - 40px') !important; 
+}
+
+.pad-wrap .toolbar-wrap .toolbar-list {
+	width: 100%;
+	height: 100%;
+	background: #ececec;
 }
 
 .pad-wrap .toolbar-wrap .toolbar-list .full-screen-btn-wrap {
@@ -142,6 +170,10 @@
 	visibility: hidden;
 }
 
+.pad-wrap.vertical .toolbar-wrap .toolbar-list .toolbar-item .child-toolbar-list:before {
+	display: none;
+}
+
 .pad-wrap .toolbar-wrap .toolbar-list .toolbar-item .child-toolbar-list {
 	position: absolute;
     z-index: 100;
@@ -150,6 +182,13 @@
     background: #fff;
     padding: 5px 2px;
     display: none;
+}
+
+.vertical .toolbar-wrap .toolbar-list .toolbar-item .child-toolbar-list {
+	top: 0;
+	left: 40px;
+	margin-top: 0;
+	margin-left: 3px;
 }
 
 .pad-wrap .toolbar-wrap .toolbar-list .selected-item .child-toolbar-list {
@@ -178,15 +217,15 @@
 	color: #cecece;
 }
 
-.pad-wrap.disabled .split-page-wrap {
+.disabled .split-page-wrap {
 	color: #cdcdcd;
 }
 
-.pad-wrap.disabled .split-page-wrap a {
+.disabled .split-page-wrap a {
 	color: #cdcdcd;
 }
 
-.pad-wrap.disabled .split-page-wrap a:hover {
+.disabled .split-page-wrap a:hover {
 	text-decoration: none;
 	cursor: default;
 }
@@ -197,8 +236,8 @@
 
 .pad-wrap .can-wrap-outer {
 	position: absolute;
-	height: calc(100% - 78px);
-	height+: calc(~'100% - 78px');
+	height: calc(100% - 76px);
+	height+: calc(~'100% - 76px');
 	top: 38px;
 	width: 100%;
 	overflow: hidden;
@@ -248,7 +287,7 @@
 }
 
 .pad-wrap .pad-tab-wrap {
-	height: 40px;
+	height: 38px;
     position: absolute;
     bottom: 0;
     width: 100%;
@@ -271,6 +310,8 @@
     margin-left: 2px;
     width: 100px;
     overflow: hidden;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
 }
 
 .pad-wrap .pad-tab-wrap .pad-tab-list .pad-tab-item.active {
@@ -341,3 +382,43 @@
 	width: 100%;
 	height: 200px;
 }
+
+/* no toolbar */
+.no-toolbar .toolbar-wrap {
+	display: none !important;
+}
+
+.no-toolbar .can-wrap-outer {
+	top: 0;
+	height: calc(100% - 38px);
+	height+: calc(~'100% - 38px');
+}
+
+.no-toolbar.vertical .can-wrap-outer, .no-toolbar.vertical .pad-tab-wrap {
+	width: 100% !important;
+	left: 0;
+}
+/* no toolbar */
+
+/* no tab */
+.no-tab .pad-tab-wrap {
+	display: none;
+}
+
+.no-tab .can-wrap-outer {
+	top: 0;
+	height: calc(100% - 38px);
+	height+: calc(~'100% - 38px');
+}
+
+.no-tab.vertical .can-wrap-outer {
+	height: 100% !important;
+}
+/* no tab */
+
+/* no toolbar , no tab */
+.no-tab.no-toolbar .can-wrap-outer{
+	height: 100%;
+	width: 100%;
+}
+/* no toolbar , no tab */
