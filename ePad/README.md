@@ -67,6 +67,8 @@ pad.render(data);
 |eraserSize|Number|橡皮擦的默认大小，默认是5px，单位：(px)|
 |ferulaSize|Number|教鞭的默认大小，默认是5px，单位：(px)|
 |noCache|Boolean|表示白板数据是否要在本地存储，默认存储|
+|noToolbar|Boolean|表示是否显示工具条，默认为false|
+|noTab|Boolean|表示是否显示下方的标签条，默认为false|
 |splitpageLayout|String|表示分页页码显示在什么位置，["left", "cetner", "right"]，默认为:right|
 |onRender|Function|白板操作的回调，当用户在白板上做任务操作，都会触发此回调，回调接受一个参数，为当前白板操作生成的数据，此数据可以直接传入需要同步的白板的render接口进行图像绘制|
 |onMousemove|Function|监测鼠标在白板上移动的回调，回调接受一个参数，为当前鼠标在白板上的信息，此数据可以直接传入需要同步的白板的mouseCtrl接口进行鼠标移动|
@@ -97,4 +99,4 @@ pad.render(data);
 |scroll|如果出现滚动条，此接口有用，滚到指定位置，参数于onScroll事件抛出|
 |exitFullScreen|退出全屏|
 |getData|获取白板某页签下或所有数据，参数为页签id，如果不传入id返回白板所有数据|
-|showFiles|演示文档，参数：<br\>{<br\>files: [],  //文件list<br\> newTab: true,  //生成一个新的tab<br\> isShow: true,  //立刻激活新tab<br\> from: "",   //由谁演示的文档<br\> tabId: "",  tab的唯一标识，可以不传<br\> tabName: "文档"   //tab名，可以不传<br\> original: true	//表示文档不压缩<br\>}|
+|showFiles|演示文档，参数：<br\>{<br\>files: [],  //文件list<br\> newTab: true,  //生成一个新的tab<br\> isShow: true,  //立刻激活新tab<br\> from: "",   //由谁演示的文档<br\> tabId: "",  tab的唯一标识，可以不传<br\> tabName: "文档"   //tab名，可以不传<br\> }|

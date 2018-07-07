@@ -103,6 +103,10 @@
 	width: 40px;
 	height: 100%;
 }
+
+.pad-wrap.vertical .toolbar-wrap .toolbar-list .toolbar-item  {
+	position: relative;
+}
 /* toolbar横向布局和纵向布局的样式，外部可以覆写 */
 
 .pad-wrap .toolbar-wrap .toolbar-list .toolbar-item {
@@ -113,7 +117,6 @@
 	box-sizing: border-box;
 	margin-left: 3px;
 	cursor: pointer;
-	position: relative;
 }
 
 .pad-wrap.vertical .toolbar-wrap .toolbar-list .toolbar-item {

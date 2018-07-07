@@ -56,7 +56,7 @@
 				}
 				
 				self.current.interimBuffer.pop();
-				data = {type: "round", data: _data, status: 0, mode: mode, origin: true, color: self.params.color, from: self.params.id, width: self.mainCanvas.width, height: self.mainCanvas.height};
+				data = {type: "round", data: _data, status: 0, mode: mode, origin: true, color: self.params.color, from: self.params.id, width: self.mainCanvas.offsetWidth, height: self.mainCanvas.offsetHeight};
 				self.current.interimBuffer.push(data);
 				self.render(data);
 			}

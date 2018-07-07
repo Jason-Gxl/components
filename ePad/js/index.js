@@ -28,6 +28,7 @@
 		defaultConfig = {
 			data: null,
 			noCache: false,
+			noTab: false,
 			noToolbar: false,
 			layout: "leftTop",
 			size: "100%",
@@ -308,7 +309,7 @@
 					params.node.scrollTop = params.node.scrollTop + (param.distance/(obj.moveHeight/obj.coverHeight))/((obj.moveHeight/obj.coverHeight)/param.scale);
 				}
 
-				if(void(0)==this.params.id || param.from===this.params.id) {
+				if(void(0)==this.params.id || param.from==this.params.id) {
 					this.fire("scroll", param);
 				}
 			},
@@ -651,7 +652,9 @@
 			}
 
 			// 对页码进行排序
-			keys.sort();
+			keys.sort(function(a, b) {
+				return a-b;
+			});
 
 			keys.forEach(function(key) {
 				list.push(obj[key]);
@@ -861,47 +864,23 @@
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:("file"===params.type?self.fileCanvas:self.mainCanvas)),
 				data = params.data,
 				img = self.tplImage,
+				cWidth = params.width,
+				cHeight = params.height,
 				ctx = canvas.getContext("2d");
 
 			img.src = data[0];
 
 			img.onload = function() {
-				if(!isCreateImage && 0!=params.status && "file"===params.type) self.tab.resizePad(self.params.width, self.params.height);
-
-				var cw = canvas.width, 
-					ch = canvas.height,
-					wScale = cw/params.width,
-					hScale = ch/params.height,
-					imgWidth = img.width,
-					imgHeight = img.height,
-					sImgWidth = imgWidth*wScale,
-					sImgHeight = imgHeight*hScale,
-					dw = cw - sImgWidth, 
-					dh = ch - sImgHeight;
-
+				var imgWidth = img.width, imgHeight = img.height;
 				ctx.save();
 
-				if(dw>=0 && dh>=0) {
-					var x = dw/2, y = dh/2;
-					ctx.drawImage(img, x, y, sImgWidth, sImgHeight);
+				if("file"===params.type) {
+					cHeight = (cHeight>cWidth/(imgWidth/imgHeight)?cHeight:cWidth*(imgHeight/imgWidth))>>0;
+					self.tab.resizePad(cWidth, cHeight);
+					self.tab.resizePadPixel(imgWidth, imgHeight);
+					ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
 				} else {
-					if(!params.original) {
-						var cwhp = cw/ch, iwhp = img.width/img.height;
 
-						if(cwhp>iwhp) {
-							ctx.drawImage(img, (cw-ch*iwhp)/2, 0, ch*iwhp, ch);
-						} else {
-							ctx.drawImage(img, 0, (ch-cw/iwhp)/2, cw, cw/iwhp);
-						}
-					} else {
-						cw = dw>=0?self.params.width:sImgWidth;
-						ch = dh>=0?self.params.height:sImgHeight;
-						dw = cw - sImgWidth;
-						dh = ch - sImgHeight;
-						var x = dw/2, y = dh/2;
-						self.tab.resizePad(cw, ch);
-						ctx.drawImage(img, x, y, sImgWidth, sImgHeight);
-					}
 				}
 
 				ctx.restore();
@@ -1087,7 +1066,7 @@
 				if(!canvas) return ;
 
 				var that = this,
-					del = from === that.params.id,
+					del = from == that.params.id,
 					_id = _tab && _tab.id?_tab.id:(0===type?0:data.uuid),
 					_tabTpl = tabTpl.replace(/@LABEL@/g, _tab && _tab.name?_tab.name:tabNameMap[type]).replace(/@DELETEBTN@/g, del?delTpl:"");
 
@@ -1185,7 +1164,7 @@
 				tabWrap.removeChild(li);
 				idList.splice(index, 1);
 
-				if(activeObj.id===_id) {
+				if(activeObj.id==_id) {
 					_id = idList[Math.max(index-1, 0)];
 					self.tab.active.call(self, _id);
 				}
@@ -1493,12 +1472,11 @@
 				_data[i] = [{
 					data: [d, 0, 0],
 					pageNumber: i+1,
-					width: params.width || that.params.width,
-					height: params.height || that.params.height,
+					width: that.mainCanvas.offsetWidth,
+					height: that.mainCanvas.offsetHeight,
 					status: 1,
 					type: "file",
-					from: params.from,
-					original: params.original
+					from: params.from
 				}];
 			}
 		});
@@ -1534,7 +1512,7 @@
 			_data[pageNumber-1].length = 1;
 			that.tab.saveData.call(that);
 
-			if(void(0)===params || (params.tabId===that.tab.getActive().id && params.pageNumber===currentPage)) {
+			if(void(0)===params || (params.tabId==that.tab.getActive().id && params.pageNumber==currentPage)) {
 				that.mainCanvas.width = that.mainCanvas.width;
 
 				render(pageNumber, 0, function() {
@@ -1631,7 +1609,7 @@
 					if(!activeTab.page) {
 						that.tab.render.call(that, realData);
 					} else {
-						if(activeTab.page.getPageNumber() === val.pageNumber) {
+						if(activeTab.page.getPageNumber() == val.pageNumber) {
 							activeTab.page.render.call(that, realData);
 						} else {
 							realData.status && activeTab.page.push.call(that, realData, +val.pageNumber);
@@ -1722,14 +1700,14 @@
 		this.turnPage = function(id, number) {
 			var activeTab = that.tab.getActive();
 
-			if(id===activeTab.id) {
+			if(id==activeTab.id) {
 				var pageObj = that.tab.getPage.call(that, id);
 				pageObj.go(number);
 			}
 		};
 
 		this.removeTab = function(id) {
-			if(void(0)===id) return ;
+			if(void(0)==id) return ;
 			that.tab.remove.call(that, id);
 		};
 
@@ -1919,8 +1897,8 @@
 		var resizePad = function(w, h) {
 			var width = w || params.width, height = h || params.height;
 
-			mainCanvas.width = bufferCanvas1.width = bufferCanvas2.width = bufferCanvas3.width = bufferCanvas4.width = width;
-			mainCanvas.height = bufferCanvas1.height = bufferCanvas2.height = bufferCanvas3.height = bufferCanvas4.height = height;
+			mainCanvas.style.width = bufferCanvas1.style.width = bufferCanvas2.style.width = bufferCanvas3.style.width = bufferCanvas4.style.width = width + "px";
+			mainCanvas.style.height = bufferCanvas1.style.height = bufferCanvas2.style.height = bufferCanvas3.style.height = bufferCanvas4.style.height = height + "px";
 			mainCanvas.style.left = bufferCanvas1.style.left = bufferCanvas2.style.left = bufferCanvas3.style.left = bufferCanvas4.style.left = 0;
 			mainCanvas.style.top = bufferCanvas1.style.top = bufferCanvas2.style.top = bufferCanvas3.style.top = bufferCanvas4.style.top = 0;
 
@@ -1937,6 +1915,13 @@
 			scrollObj && scrollObj.resize();
 		};
 
+		var resizePadPixel = function(w, h) {
+			var width = w || params.width, height = h || params.height;
+
+			mainCanvas.width = bufferCanvas1.width = bufferCanvas2.width = bufferCanvas3.width = bufferCanvas4.width = width;
+			mainCanvas.height = bufferCanvas1.height = bufferCanvas2.height = bufferCanvas3.height = bufferCanvas4.height = height;
+		};
+
 		self.tab = new Tab(params.wrap);
 		self.textInput = textInput;
 		self.mouseIconCanvas = bufferCanvas1;
@@ -1945,6 +1930,7 @@
 		self.mainCanvas = mainCanvas;
 		createSize();
 		resizePad();
+		resizePadPixel();
 
 		var scrollObj = scroll.init({
 			node: canvasWrap,
@@ -1960,6 +1946,10 @@
 		
 		Object.defineProperty(self.tab, "resizePad", {
 			value: resizePad
+		});
+
+		Object.defineProperty(self.tab, "resizePadPixel", {
+			value: resizePadPixel
 		});
 
 		ele.addEvent(colorInput, "change", function() {
@@ -2045,17 +2035,14 @@
 					width: params.width,
 					height: params.height,
 					from: from,
-					tabId: newTab?id:activeTab.id,
-					original: params.original || false
+					tabId: newTab?id:activeTab.id
 				});
 
 				self.tab.setPage.call(self, void(0)!=id?id:activeTab.id, pageObj);
 				activeTab.page = pageObj;
 
-				if(self.params.id===from && "[object Function]"===toString.call(self.params.onShowFiles)) {
+				if(self.params.id==from && "[object Function]"===toString.call(self.params.onShowFiles)) {
 					params.from = from;
-					params.width = self.params.width;
-					params.height = self.params.height;
 					self.params.onShowFiles(params);
 				}
 			};
@@ -2068,7 +2055,7 @@
 				if(isShow) {
 					self.tab.active.call(self, id);
 					_showFiles();
-					from === self.params.id && self.params.onTabChange && self.params.onTabChange(id);
+					from == self.params.id && self.params.onTabChange && self.params.onTabChange(id);
 				}
 			} else {
 				self.pad.clear();
@@ -2318,7 +2305,7 @@
 			var _n = self.tab.build.call(self, mainCanvas, 0);
 			self.tab.active.call(self, _n);
 		} else {
-			for(var key in _data) {
+			Object.keys(_data).sort(function(a, b) {return a-b}).forEach(function(key) {
 				var val = _data[key];
 				var _n = self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, val.type, val.data, {id: key, name: val.tabName}, val.from);
 
@@ -2334,7 +2321,7 @@
 				}
 
 				0===val.type && self.tab.active.call(self, _n);
-			}
+			});
 		}
 	}
 

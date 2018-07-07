@@ -32,7 +32,7 @@
 		// 鼠标绘制接口
 		mouseRender: function(data) {
 			var self = this;
-			data = {type: "eraser", data: [data.x, data.y, self.params.eraserSize], mode: modeMap[self.current.name], from: self.params.id, width: self.mainCanvas.width, height: self.mainCanvas.height};
+			data = {type: "eraser", data: [data.x, data.y, self.params.eraserSize], mode: modeMap[self.current.name], from: self.params.id, width: self.mainCanvas.offsetWidth, height: self.mainCanvas.offsetHeight};
 			pos = data;
 			self.mouseRender.call(self, data);
 		},

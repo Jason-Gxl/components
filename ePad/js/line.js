@@ -42,7 +42,7 @@
 			if(!origin) {
 				self.current.interimBuffer.pop();
 				data = [].concat.apply([], self.current.points);
-				data = {type: "line", data: data, status: 0, mode: modeMap[self.current.name], origin: true, color: self.params.color, from: self.params.id, width: self.mainCanvas.width, height: self.mainCanvas.height};
+				data = {type: "line", data: data, status: 0, mode: modeMap[self.current.name], origin: true, color: self.params.color, from: self.params.id, width: self.mainCanvas.offsetWidth, height: self.mainCanvas.offsetHeight};
 				self.current.interimBuffer.push(data);
 				self.render(data);
 			}

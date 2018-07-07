@@ -32,7 +32,7 @@
 				self.current.points.push(data.y);
 				self.textInput.style.cssText = "visibility: visible; z-index: 101; font-size: " + self.params.fontSize + "; left: " + (data.x + self.mainCanvas.offsetLeft) + "px; top: " + (data.y + self.mainCanvas.offsetTop -self.textInput.offsetHeight/2 - 18) + "px";
 				self.textInput.focus();
-				data = {type: "text", data: [data.x, data.y], status: 0, origin: !!origin, color: self.params.color, size: self.params.fontSize, from: self.params.id, width: self.mainCanvas.width, height: self.mainCanvas.height};
+				data = {type: "text", data: [data.x, data.y], status: 0, origin: !!origin, color: self.params.color, size: self.params.fontSize, from: self.params.id, width: self.mainCanvas.offsetWidth, height: self.mainCanvas.offsetHeight};
 				self.current.interimBuffer.push(data);
 			}
 		},

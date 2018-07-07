@@ -24,7 +24,7 @@
 		// status = 0
 		bufferRender: function(_data, origin) {
 			var self = this,
-				data = !!origin?{type: "pen", data: [], status: 0, origin: !!origin, color: self.params.color, from: self.params.id, width: self.mainCanvas.width, height: self.mainCanvas.height}:self.current.interimBuffer.pop();
+				data = !!origin?{type: "pen", data: [], status: 0, origin: !!origin, color: self.params.color, from: self.params.id, width: self.mainCanvas.offsetWidth, height: self.mainCanvas.offsetHeight}:self.current.interimBuffer.pop();
 			data.data.push(_data);
 			self.current.interimBuffer.push(data);
 			self.render(data);

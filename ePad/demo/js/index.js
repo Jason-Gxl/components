@@ -24,8 +24,7 @@ document.getElementById("show_btn").addEventListener("click", function() {
 		newTab: true,
 		isShow: true,
 		tabName: tabNameInput.value || "",
-		original: true,
-		tabId: Date.now()
+		//tabId: Date.now()
 	};
 
 	pad1.showFiles(data);
@@ -35,9 +34,10 @@ var pad1 = wPad.init({
 	id: 1,
 	size: "16:9",
 	//layout: "leftTop",
-	noToolbar: true,
+	noToolbar: false,
+	// data: data,
 	noTab: false,
-	vertical: false,
+	vertical: true,
 	splitpageLayout: "center",
 	wrap: document.getElementById("pad1"),
 	background: "#fff",
@@ -84,6 +84,7 @@ var pad2 = wPad.init({
 	id: 2,
 	size: "16:9",
 	noToolbar: true,
+	// data: data,
 	wrap: document.getElementById("pad2"),
 	background: "#fff",
 	autoSaveTime: 5,
