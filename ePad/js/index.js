@@ -863,24 +863,53 @@
 			var self = this,
 				canvas = isCreateImage?self.createImageCanvas:(0===params.status?self.bufferCanvas:("file"===params.type?self.fileCanvas:self.mainCanvas)),
 				data = params.data,
-				img = self.tplImage,
 				cWidth = params.width,
 				cHeight = params.height,
+				img = self.tplImage,
 				ctx = canvas.getContext("2d");
 
 			img.src = data[0];
 
 			img.onload = function() {
-				var imgWidth = img.width, imgHeight = img.height;
+				var imgWidth = img.width, 
+					imgHeight = img.height,
+					imgScale = imgWidth/imgHeight,
+					pWidth = imgWidth,
+					pHeight = imgHeight;
+
+				if("file"===params.type && 0!=params.status && !isCreateImage) {
+					cWidth = self.params.width;
+					cHeight = self.params.height;
+					self.tab.resizePad(cWidth, cHeight);
+					self.tab.resizePadPixel(cWidth, cHeight);
+				}
+
 				ctx.save();
 
 				if("file"===params.type) {
-					cHeight = (cHeight>cWidth/(imgWidth/imgHeight)?cHeight:cWidth*(imgHeight/imgWidth))>>0;
-					self.tab.resizePad(cWidth, cHeight);
-					self.tab.resizePadPixel(imgWidth, imgHeight);
-					ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
-				} else {
+					if(cHeight>cWidth/imgScale) {
+						pHeight = (imgHeight + imgHeight*(cHeight/cWidth - imgHeight/imgWidth))>>0;
+					} else {
+						cHeight = (cWidth/(imgWidth/imgHeight))>>0;
+					}
 
+					self.tab.resizePad(cWidth, cHeight);
+					self.tab.resizePadPixel(pWidth, pHeight);
+					ctx.drawImage(img, (pWidth-imgWidth)/2, (pHeight-imgHeight)/2, imgWidth, imgHeight);
+				} else {
+					var scale = 1,
+						pw = canvas.width, 
+						ph = canvas.height,
+						wb = canvas.offsetWidth/params.width,
+						hb = canvas.offsetHeight/params.height;
+
+					if(pw<imgWidth || ph<imgHeight) {
+						var scale = pw<imgWidth?pw/imgWidth:(ph<imgHeight?ph/imgHeight:Math.min(pw/imgWidth, ph/imgHeight));
+					} 
+
+					// scale *= Math.min(wb, hb);
+					ctx.scale(scale, scale);
+					ctx.drawImage(img, (pw-imgWidth*scale)/2, (ph-imgHeight*scale)/2, imgWidth, imgHeight);
 				}
 
 				ctx.restore();
@@ -1176,6 +1205,7 @@
 				var self = this, _data = dataMap[_id];
 				ele.removeClass(activeObj.tab, "active");
 				self.tab.resizePad();
+				self.tab.resizePadPixel();
 				self.scroll.toOrigin();
 
 				if(activeObj.page) {
