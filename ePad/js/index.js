@@ -871,11 +871,7 @@
 			img.src = data[0];
 
 			img.onload = function() {
-				var imgWidth = img.width, 
-					imgHeight = img.height,
-					imgScale = imgWidth/imgHeight,
-					pWidth = imgWidth,
-					pHeight = imgHeight;
+				var imgWidth = img.width, imgHeight = img.height;
 
 				if("file"===params.type && 0!=params.status && !isCreateImage) {
 					cWidth = self.params.width;
@@ -887,6 +883,10 @@
 				ctx.save();
 
 				if("file"===params.type) {
+					var imgScale = imgWidth/imgHeight,
+						pWidth = imgWidth,
+						pHeight = imgHeight;
+						
 					if(cHeight>cWidth/imgScale) {
 						pHeight = (imgHeight + imgHeight*(cHeight/cWidth - imgHeight/imgWidth))>>0;
 					} else {
@@ -897,19 +897,27 @@
 					self.tab.resizePadPixel(pWidth, pHeight);
 					ctx.drawImage(img, (pWidth-imgWidth)/2, (pHeight-imgHeight)/2, imgWidth, imgHeight);
 				} else {
-					var scale = 1,
-						pw = canvas.width, 
+					var pw = canvas.width,
 						ph = canvas.height,
-						wb = canvas.offsetWidth/params.width,
-						hb = canvas.offsetHeight/params.height;
+						wScale = pw/cWidth,
+						hScale = ph/cHeight,
+						sImgWidth = imgWidth*wScale,
+						sImgHeight = imgHeight*hScale,
+						dw = pw - sImgWidth, 
+						dh = ph - sImgHeight;
 
-					if(pw<imgWidth || ph<imgHeight) {
-						var scale = pw<imgWidth?pw/imgWidth:(ph<imgHeight?ph/imgHeight:Math.min(pw/imgWidth, ph/imgHeight));
-					} 
+					if(dw>=0 && dh>=0) {
+						var x = dw/2, y = dh/2;
+						ctx.drawImage(img, x, y, sImgWidth, sImgHeight);
+					} else {
+						var cwhp = pw/ph, iwhp = img.width/img.height;
 
-					// scale *= Math.min(wb, hb);
-					ctx.scale(scale, scale);
-					ctx.drawImage(img, (pw-imgWidth*scale)/2, (ph-imgHeight*scale)/2, imgWidth, imgHeight);
+						if(cwhp>iwhp) {
+							ctx.drawImage(img, (pw-ph*iwhp)/2, 0, ph*iwhp, ph);
+						} else {
+							ctx.drawImage(img, 0, (ph-pw/iwhp)/2, pw, pw/iwhp);
+						}
+					}
 				}
 
 				ctx.restore();
