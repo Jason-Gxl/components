@@ -62,7 +62,7 @@
 		bufferRender: function(_data, origin) {
 			if(!_data) return ;
 			var self = this,
-				data = {type: "eraser", data: [], status: 1, origin: true, mode: modeMap[self.current.name], from: self.params.id, width: self.mainCanvas.width, height: self.mainCanvas.height};
+				data = {type: "eraser", data: [], status: 1, origin: true, mode: modeMap[self.current.name], from: self.params.id, width: self.mainCanvas.offsetWidth, height: self.mainCanvas.offsetHeight};
 			
 			if(!origin && lastPoint) {
 				_data.ex = lastPoint.x;

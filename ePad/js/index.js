@@ -415,7 +415,7 @@
 	var data = {
 		// 生成uuid
 		get uuid() {
-			return Date.now();
+			return Date.now().toString();
 		},
 		// 对白板数进行缩放
 		// 主要应对白板的缩放后的重绘及从一个白板传递到另一个白板的数据
@@ -942,8 +942,8 @@
 
 			data.forEach(function(data) {
 				if(0===params.mode) {
-					var sin = data.size/2*Math.sin(Math.atan((data.y - data.ey)/(data.x - data.ex))),
-				    	cos = data.size/2*Math.cos(Math.atan((data.y - data.ey)/(data.x - data.ex)));
+					var sin = data.size/2*Math.sin(Math.atan((data.y - data.ey)/(data.x - data.ex))) || 0,
+				    	cos = data.size/2*Math.cos(Math.atan((data.y - data.ey)/(data.x - data.ex))) || 0;
 
 				    var x1 = data.ex + sin;
 				    var y1 = data.ey - cos;
@@ -959,7 +959,7 @@
 		        	ctx.beginPath();
 		        	ctx.arc(data.x, data.y, data.size/2, 0, 2*Math.PI);
 		        	ctx.clip();
-		        	ctx.clearRect(0, 0, self.params.width, self.params.height);
+		        	ctx.clearRect(0, 0, canvas.width, canvas.height);
 		        	ctx.restore();
 				} else {
 					var x1 = data.ex - data.size/2;
@@ -976,7 +976,7 @@
 		        	ctx.beginPath();
 		        	ctx.rect(x1, y1, data.size, data.size);
 		        	ctx.clip();
-		        	ctx.clearRect(0, 0, self.params.width, self.params.height);
+		        	ctx.clearRect(0, 0, canvas.width, canvas.height);
 		        	ctx.restore();
 				}
 				
@@ -2309,7 +2309,6 @@
 			active = true;
 			if(!current) return ;
 			ele.removeClass(lastSpan, "selected-item");
-			current && current.destory.call(self);
 			current.bufferRender && current.bufferRender.call(self, pos, true);
 		});
 
