@@ -55,6 +55,7 @@ pad.render(data);
 |----|----|----|
 |id|String|给创建的白板一个唯一的标识符|
 |data|Object|白板数据|
+|super|Boolean|表示用户为超级，有所有操作权限|
 |layout|String|定义白板的工具栏的位置，有四个可选值["leftTop", "leftBottom", "rightTop", "rightBottom"]，分别表示：左上、左下、右上、右下，默认是左上|
 |vertical|Boolean|定义白板的工具栏的布局方式，默认是横向排列，vertical表示纵向排列|
 |disable|Boolean|定义白板是否有操作权限，默认是有操作权限|
@@ -70,6 +71,7 @@ pad.render(data);
 |noToolbar|Boolean|表示是否显示工具条，默认为false|
 |noTab|Boolean|表示是否显示下方的标签条，默认为false|
 |splitpageLayout|String|表示分页页码显示在什么位置，["left", "cetner", "right"]，默认为:right|
+|toolbars|Array|工具列表，默认："ferula", "pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear", "color"|
 |onRender|Function|白板操作的回调，当用户在白板上做任务操作，都会触发此回调，回调接受一个参数，为当前白板操作生成的数据，此数据可以直接传入需要同步的白板的render接口进行图像绘制|
 |onMousemove|Function|监测鼠标在白板上移动的回调，回调接受一个参数，为当前鼠标在白板上的信息，此数据可以直接传入需要同步的白板的mouseCtrl接口进行鼠标移动|
 |onClear|Function|清除白板触发的回调|

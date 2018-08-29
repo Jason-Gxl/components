@@ -3,18 +3,22 @@
 	var vm = window.vm || {},
 		toString = Object.prototype.toString,
 		URL = window.URL || window.webkitURL,
+		CustomEvent = window.CustomEvent,
 		padMap = {},
 		padCount = 0,
 		padTab = [],
 		isMobile = /(\bmobile\b|\bandroid\b)/i.test(navigator.userAgent),
 		isFireFox = /\bfirefox\b/i.test(navigator.userAgent),
+		isIE = /\bMSIE\b/i.test(navigator.userAgent),
+		isChrome = /\bchrome\b/i.test(navigator.userAgent),
 		// 事件名map，PC端和移动端需要对应不同的事件名
 		eventMap = {
 			click: isMobile?"touchend":"click",
 			down: isMobile?"touchstart":"mousedown",
-			move: isMobile?"touchmove":"mousemove",
+			move: isMobile?"touchmove":"mouserun",
 			up: isMobile?"touchend":"mouseup",
-			wheel: isFireFox?"DOMMouseScroll":"mousewheel"
+			wheel: isFireFox?"DOMMouseScroll":"mousewheel",
+			fullScreen: isIE?"MSFullscreenChange":(isChrome?"webkitfullscreenchange":(isFireFox?"mozfullscreenchange":"fullscreenchange")),
 		},
 		// 工具栏不同的布局对应的className
 		layoutClassMap = {
@@ -29,6 +33,7 @@
 			data: null,
 			noCache: false,
 			noTab: false,
+			super: false,
 			noToolbar: false,
 			layout: "leftTop",
 			size: "100%",
@@ -127,7 +132,7 @@
 	var tpl3 = '<ul class="child-toolbar-list">@CHILDTOOLBARITEM@</ul>';
 
 	var tpl4 = '\
-		<div>\
+		<div class="split-page">\
 			<a href="javascript:void(0);" class="pre-page-btn iconfont icon-zuofanye"></a>\
 			<a href="javascript:void(0);" class="next-page-btn iconfont icon-youfanye"></a>\
 			<span><input type="text" class="page-number-input"/>/@TOTAL@<a href="javascript:void(0);" class="go-page-btn">GO</a></span>\
@@ -152,6 +157,25 @@
 			target.removeEventListener(type, fn, use||false);
 		}:function(target, type, fn) {
 			target.detachEvent("on"+type, fn);
+		},
+		redefineEvent: function(original, current, _target, use) {
+			var self = this,
+				target = _target || window,
+				running = false;
+
+			var fn = function() {
+				if(running) return ;
+				var args = [].slice.call(arguments, 0), e = args[0] || window.event;
+				running = true;
+
+				window.requestAnimationFrame(function() {
+					target.dispatchEvent(new CustomEvent(current, {detail: e}));
+					running = false;
+				});
+			};
+
+			self.addEvent(target, original, fn, use);
+			return fn;
 		},
 		// 为dom节点添加一个指定的类名
 		addClass: function(ele, className) {
@@ -202,6 +226,7 @@
 				disable = false,
 				activeType = "x",
 				startPoint = {x: 0, y: 0},
+				moveCallback = null,
 				parentNode = params.node.parentNode;
 
 			self.params = params;
@@ -220,8 +245,10 @@
 
 				if("x"===type) {
 					params.node.clientWidth<params.node.scrollWidth && ele.classList.remove("pad-hide");
+					self.scrollObj[type].left = 0;
 				} else {
 					params.node.clientHeight<params.node.scrollHeight && ele.classList.remove("pad-hide");
+					self.scrollObj[type].top = 0;
 				}
 			};
 
@@ -244,13 +271,28 @@
 			var mousemoveHandler = function() {
 				var args = [].slice.call(arguments, 0),
 					obj = self.scrollObj[activeType],
-					e = args[0] || window.event;
+					e = args[0] || window.event,
+					e = isMobile?e:(e.detail?e.detail:e);
 
 				if("x"===activeType) {
-					var x = e.x || e.clientX, data = {type: "x", distance: x-startPoint.x, from: params.id, scale: obj.moveWidth/obj.coverWidth};
+					var x = e.x || e.clientX, 
+						data = {
+							type: "x", 
+							from: params.id,
+							coverWidth: obj.coverWidth,
+							distance: obj.left+(x-startPoint.x)
+						};
+
 					startPoint.x = x;
 				} else {
-					var y = e.y || e.clientY, data = {type: "y", distance: y-startPoint.y, from: params.id, scale: obj.moveHeight/obj.coverHeight};
+					var y = e.y || e.clientY, 
+						data = {
+							type: "y", 
+							from: params.id,
+							coverHeight: obj.coverHeight,
+							distance: obj.top+(y-startPoint.y)
+						};
+
 					startPoint.y = y;
 				}
 
@@ -258,20 +300,18 @@
 			};
 
 			var mouseupHandler = function() {
-				ele.delEvent(document, "mousemove", mousemoveHandler);
+				ele.delEvent(document, "mousemove", moveCallback);
 				ele.delEvent(document, "mouseup", mouseupHandler);
 			};
 
 			if(self.scrollObj.x) {
 				ele.addEvent(self.scrollObj.x.toolbar, "mousedown", function() {
 					if(disable) return ;
-
-					var args = [].slice.call(arguments, 0),
-						e = args[0] || window.event;
-
+					var args = [].slice.call(arguments, 0), e = args[0] || window.event;
+					moveCallback = ele.redefineEvent("mousemove", "mouserun", document);
 					startPoint.x = e.x || e.clientX;
 					activeType = "x";
-					ele.addEvent(document, "mousemove", mousemoveHandler);
+					ele.addEvent(document, "mouserun", mousemoveHandler);
 					ele.addEvent(document, "mouseup", mouseupHandler);
 				});
 			}
@@ -279,13 +319,11 @@
 			if(self.scrollObj.y) {
 				ele.addEvent(self.scrollObj.y.toolbar, "mousedown", function() {
 					if(disable) return ;
-
-					var args = [].slice.call(arguments, 0),
-						e = args[0] || window.event;
-
+					var args = [].slice.call(arguments, 0), e = args[0] || window.event;
+					moveCallback = ele.redefineEvent("mousemove", "mouserun", document);
 					startPoint.y = e.y || e.clientY;
 					activeType = "y";
-					ele.addEvent(document, "mousemove", mousemoveHandler);
+					ele.addEvent(document, "mouserun", mousemoveHandler);
 					ele.addEvent(document, "mouseup", mouseupHandler);
 				});
 			}
@@ -300,18 +338,20 @@
 					toolbar = obj.toolbar;
 
 				if("x"===param.type) {
-					var offsetLeft = toolbar.offsetLeft + param.distance;
-					toolbar.style.left = Math.max(0, Math.min(offsetLeft, container.clientWidth - toolbar.offsetWidth)) + "px";
-					params.node.scrollLeft = params.node.scrollLeft + (param.distance/(obj.moveWidth/obj.coverWidth))/((obj.moveWidth/obj.coverWidth)/param.scale);
+					param.distance = param.distance * (obj.coverWidth/param.coverWidth);
+					var offsetLeft = Math.max(0, Math.min(obj.coverWidth, param.distance));
+					params.node.scrollLeft = offsetLeft;
+					toolbar.style.left = obj.moveWidth*(offsetLeft/obj.coverWidth) + "px";
+					this.scrollObj.x.left = offsetLeft;
 				} else {
-					var offsetTop = toolbar.offsetTop + param.distance;
-					toolbar.style.top = Math.max(0, Math.min(offsetTop, container.clientHeight - toolbar.offsetHeight)) + "px";
-					params.node.scrollTop = params.node.scrollTop + (param.distance/(obj.moveHeight/obj.coverHeight))/((obj.moveHeight/obj.coverHeight)/param.scale);
+					param.distance = param.distance * (obj.coverHeight/param.coverHeight);
+					var offsetTop = Math.max(0, Math.min(obj.coverHeight, param.distance));
+					params.node.scrollTop = offsetTop;
+					toolbar.style.top = obj.moveHeight*(offsetTop/obj.coverHeight) + "px";
+					this.scrollObj.y.top = offsetTop;
 				}
 
-				if(void(0)==this.params.id || param.from==this.params.id) {
-					this.fire("scroll", param);
-				}
+				if(void(0)==this.params.id || param.from==this.params.id) this.fire("scroll", param);
 			},
 			toOrigin: function(type) {
 				var params = this.params;
@@ -479,8 +519,8 @@
 						}
 
 						for(var key in arg) {
-							var val = arg[key],
-								type = toString.call(val);
+							if(!arg.hasOwnProperty(key)) continue;
+							var val = arg[key], type = toString.call(val);
 
 							if(container) {
 								if("[object Object]"===type || "[object Array]"===type) {
@@ -497,9 +537,7 @@
 							}							
 						}
 
-						if(container) {
-							firstArg.push(container);
-						}
+						container && firstArg.push(container);
 					} else {
 						arg.forEach(function(item, index) {
 							var _type = toString.call(item);
@@ -532,8 +570,8 @@
 						var container = {};
 
 						for(var key in firstArg) {
-							var val = firstArg[key],
-								type = toString.call(val);
+							if(!firstArg.hasOwnProperty(key)) continue;
+							var val = firstArg[key], type = toString.call(val);
 
 							if("[object Object]"===type || "[object Array]"===type) {
 								container[key] = data.copy(val);
@@ -571,8 +609,7 @@
 				createImageCanvas = self.createImageCanvas;
 
 			var _createImage = function() {
-				var imgData=createImageCanvas.toDataURL(),
-					page = self.tab.getPage(activeTab.id);
+				var imgData=createImageCanvas.toDataURL(), page = self.tab.getPage(activeTab.id);
 				createImageCanvas.width = createImageCanvas.width;
 
 				var _data_ = {
@@ -585,10 +622,7 @@
 					from: "auto"
 				};
 
-				if(page) {
-					_data_.pageNumber = page.getPageNumber();
-				}
-
+				if(page) _data_.pageNumber = page.getPageNumber();
 				file && _data.push(file);
 				_data.push(_data_);
 				[].push.apply(_data, arr);
@@ -648,6 +682,7 @@
 			});
 
 			for(var key in obj) {
+				if(!obj.hasOwnProperty(key)) continue;
 				keys.push(key);
 			}
 
@@ -1099,13 +1134,16 @@
 				pageMap = {},
 				tabWrap = wrap.getElementsByClassName("pad-tab-list")[0];
 
-			self.build = function(canvas, type, _data, _tab, from) {
+			self.build = function(canvas, _params) {
 				if(!canvas) return ;
 
 				var that = this,
-					del = from == that.params.id,
-					_id = _tab && _tab.id?_tab.id:(0===type?0:data.uuid),
-					_tabTpl = tabTpl.replace(/@LABEL@/g, _tab && _tab.name?_tab.name:tabNameMap[type]).replace(/@DELETEBTN@/g, del?delTpl:"");
+					type = _params.type,
+					_data = _params.data,
+					from = _params.from,
+					del = 0===_params.type?false:(that.params.super?true:from == that.params.id),
+					_id = _params.id?_params.id:(0===type?0:data.uuid),
+					_tabTpl = tabTpl.replace(/@LABEL@/g, _params.name?_params.name:tabNameMap[type]).replace(/@DELETEBTN@/g, del?delTpl:"");
 
 				UL.innerHTML = _tabTpl;
 				idList.push(_id);
@@ -1148,7 +1186,7 @@
 					from: from
 				};
 
-				if(_tab && _tab.name) that.container[_id].tabName = _tab.name;
+				if(_params.name) that.container[_id].tabName = _params.name;
 				return _id;
 			};
 
@@ -1174,6 +1212,7 @@
 
 				var it = setTimeout(function() {
 					for(var key in pageMap) {
+						if(!pageMap.hasOwnProperty(key)) continue;
 						var page = pageMap[key];
 						dataMap[key].length = 0;
 						[].push.apply(dataMap[key], page.getData());
@@ -1209,12 +1248,17 @@
 				!self.params.noCache && window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
 			};
 
-			self.active = function(_id) {
+			self.active = function(_id, noResize, dontOrigin) {
+				if(!tabMap[_id]) return false;
 				var self = this, _data = dataMap[_id];
 				ele.removeClass(activeObj.tab, "active");
-				self.tab.resizePad();
-				self.tab.resizePadPixel();
-				self.scroll.toOrigin();
+
+				if(!noResize) {
+					self.tab.resizePad();
+					self.tab.resizePadPixel();
+				}
+				
+				!dontOrigin && self.scroll.toOrigin();
 
 				if(activeObj.page) {
 					activeObj.page.hide();
@@ -1231,6 +1275,7 @@
 				activeObj.canvas = canvasMap[_id];
 				activeObj.id = _id;
 				activeObj.type = self.container[_id].type;
+				activeObj.name = self.container[_id].tabName || "";
 				activeObj.page = pageMap[_id];
 
 				ele.addClass(activeObj.tab, "active");
@@ -1253,6 +1298,8 @@
 						next();
 					}
 				}
+
+				return true;
 			};
 
 			self.getActive = function() {
@@ -1552,12 +1599,7 @@
 
 			if(void(0)===params || (params.tabId==that.tab.getActive().id && params.pageNumber==currentPage)) {
 				that.mainCanvas.width = that.mainCanvas.width;
-
-				render(pageNumber, 0, function() {
-					if(void(0)===params) {
-						"[object Function]"===toString.call(that.params.onClear) && that.params.onClear({tabId: that.tab.getActive().id, pageNumber: pageNumber});
-					}
-				});
+				void(0)===params && "[object Function]"===toString.call(that.params.onClear) && that.params.onClear({tabId: that.tab.getActive().id, pageNumber: pageNumber});
 			}
 		};
 
@@ -1641,6 +1683,7 @@
 			var activeTab = that.tab.getActive();
 
 			for(var key in _data) {
+				if(!_data.hasOwnProperty(key)) continue;
 				var val = _data[key], type = val.type, realData = val.data;
 
 				if(key==activeTab.id) {
@@ -1665,7 +1708,12 @@
 							}
 						}
 					} else {
-						that.tab.build.call(that, that.fileCanvas, 1, [realData], {id: key}, realData.from);
+						that.tab.build.call(that, that.fileCanvas, {
+							type: 1,
+							data: [realData],
+							id: key,
+							from: realData.from
+						});
 					}
 				}
 			}
@@ -1675,6 +1723,7 @@
 			var scaleWidth = null, scaleHeight = null;
 
 			for(var key in _data) {
+				if(!_data.hasOwnProperty(key)) continue;
 				var val = _data[key], type = val.type, val = val.data;
 				mouse.render.call(that, val);
 			}
@@ -1732,7 +1781,7 @@
 		};
 
 		this.changeTab = function(id) {
-			that.tab.active.call(that, id);
+			return that.tab.active.call(that, id);
 		};
 
 		this.turnPage = function(id, number) {
@@ -1857,6 +1906,9 @@
 		bufferCanvas3 = wrap.getElementsByClassName("buffer-can-3")[0];
 		bufferCanvas4 = wrap.getElementsByClassName("buffer-can-4")[0];
 
+		// bufferCanvas1的mousemove事件回调
+		var bc1MoveCallback = ele.redefineEvent("mousemove", "mouserun", bufferCanvas1);
+
 		var createSize = function() {
 			var canvasWrapWidth = canvasWrap.clientWidth, canvasWrapHeight = canvasWrap.clientHeight;
 
@@ -1912,21 +1964,27 @@
 			}
 
 			if(true!=scrollObj.disable && scrollObj.scrollObj.y.coverHeight>0) {
-				var data = {type: "y", distance: ("DOMMouseScroll"===e.type?(3===e.detail?100:-100):(e.deltaY))/10, from: params.id, scale: scrollObj.scrollObj.y.moveHeight/scrollObj.scrollObj.y.coverHeight};
+				var data = {
+					type: "y", 
+					from: params.id,
+					coverHeight: scrollObj.scrollObj.y.coverHeight,
+					distance: scrollObj.scrollObj.y.top+("DOMMouseScroll"===e.type?(3===e.detail?100:-100):(e.deltaY))/5
+				};
+
 				scrollObj.scroll(data);
 			}
 		});
 
 		var oldAvilWidth = canvasWrap.clientWidth, oldAvilHeight = canvasWrap.clientHeight;
 
-		ele.addEvent(window, "resize", function() {
+		ele.redefineEvent("resize", "sizeChange", window);
+		ele.addEvent(window, "sizeChange", function() {
 			var avilWidth = canvasWrap.clientWidth,
 				avilHeight = canvasWrap.clientHeight;
 
 			if(avilWidth!=oldAvilWidth || avilHeight!=oldAvilHeight) {
 				createSize();
-				resizePad();
-				self.tab.active.call(self, self.tab.getActive().id);
+				self.tab.active.call(self, self.tab.getActive().id, null, true);
 				oldAvilWidth = avilWidth;
 				oldAvilHeight = avilHeight;
 			}
@@ -1967,8 +2025,6 @@
 		self.fileCanvas = bufferCanvas4;
 		self.mainCanvas = mainCanvas;
 		createSize();
-		resizePad();
-		resizePadPixel();
 
 		var scrollObj = scroll.init({
 			node: canvasWrap,
@@ -1994,25 +2050,30 @@
 			self.params.color = this.value;
 		});
 
+		ele.addEvent(wrap.getElementsByClassName("pad-wrap")[0], eventMap["fullScreen"], function() {
+			isFullScreen = !isFullScreen;
+			ele.removeClass(fullScreenBtn, isFullScreen?"icon-enlarge":"icon-narrow");
+			ele.addClass(fullScreenBtn, isFullScreen?"icon-narrow":"icon-enlarge");
+		});
+
 		var fullScreen = function(flag) {
 			if(!isMobile) {
 				flag?fullScreenInterface.call(wrap.getElementsByClassName("pad-wrap")[0]):cancelFullScreenInterface.call(document);
 			}else {				
 				flag?ele.addClass(wrap, "pad-full-screen"):ele.removeClass(wrap, "pad-full-screen");
+				isFullScreen = flag;
+				ele.removeClass(fullScreenBtn, isFullScreen?"icon-enlarge":"icon-narrow");
+				ele.addClass(fullScreenBtn, isFullScreen?"icon-narrow":"icon-enlarge");
+				self.tab.active.call(self, self.tab.getActive().id);
 			}
-
-			isFullScreen = flag;
-			ele.removeClass(fullScreenBtn, isFullScreen?"icon-enlarge":"icon-narrow");
-			ele.addClass(fullScreenBtn, isFullScreen?"icon-narrow":"icon-enlarge");
-			resizePad();
-			self.tab.active.call(self, self.tab.getActive().id);
 		};
 
 		var exportImage = function() {
-			var uuid = data.uuid,
+			var uuid = self.tab.getActive().name || data.uuid,
 				downloadEle = document.createElement("A"),
 				createImageCanvas = self.createImageCanvas,
-				ctx = createImageCanvas.getContext("2d");
+				ctx = createImageCanvas.getContext("2d"),
+				padBox = self.params.wrap.getElementsByClassName("pad-wrap")[0];
 
 			ctx.drawImage(self.fileCanvas, 0, 0);
 			ctx.drawImage(self.mainCanvas, 0, 0);
@@ -2028,16 +2089,30 @@
 			}
 
 			var url = URL.createObjectURL(new Blob([tArr], {mime: "image/octet-stream;Content-Disposition:attachment"}));
+			downloadEle.className = "export-image";
 			downloadEle.href = url;
 			downloadEle.download = uuid + ".png";
+			padBox.appendChild(downloadEle);
 			downloadEle.click();
-			URL.revokeObjectURL(url);
+
+			var timer = setTimeout(function() {
+				timer && clearTimeout(timer);
+				URL.revokeObjectURL(url);
+			}, 300);
+			
 			createImageCanvas.width = createImageCanvas.width;
+			padBox.removeChild(downloadEle);
 		};
 
 		self.pad.resize = function(w, h) {
-			!isNaN(w) && !isNaN(h) && resizePad(w, h);
-			self.tab.active.call(self, self.tab.getActive().id);
+			if(!isNaN(w) && !isNaN(h)) {
+				resizePad(w, h);
+				resizePadPixel(w, h);
+				self.tab.active.call(self, self.tab.getActive().id, true);
+			} else {
+				createSize();
+				self.tab.active.call(self, self.tab.getActive().id);
+			}			
 		};
 
 		self.pad.scroll = function(data) {
@@ -2086,8 +2161,13 @@
 			};
 
 			if(newTab) {
-				var _tab = {id: tabId, name: tabName};
-				var id = self.tab.build.call(self, bufferCanvas4, 1, null, _tab, from);
+				var id = self.tab.build.call(self, bufferCanvas4, {
+					type: 1,
+					id: tabId, 
+					name: tabName,
+					from: from
+				});
+
 				params.tabId = id;
 
 				if(isShow) {
@@ -2096,8 +2176,13 @@
 					from == self.params.id && self.params.onTabChange && self.params.onTabChange(id);
 				}
 			} else {
-				self.pad.clear();
-				_showFiles();
+				if(0==self.tab.getActive().id) {
+					self.toolbarMap.image.renderBuffer.call(self, params.files);
+					self.toolbarMap.image.render.call(self, [0, 0]);
+				} else {
+					self.pad.clear();
+					_showFiles();
+				}
 			}
 		};
 
@@ -2235,7 +2320,9 @@
 		var mouseX = 0, mouseY = 0;
 
 		ele.addEvent(bufferCanvas1, eventMap["move"], function() {
-			var args = [].slice.call(arguments, 0), e = args[0] || window.event;
+			var args = [].slice.call(arguments, 0), 
+				e = args[0] || window.event,
+				e = isMobile?e:(e.detail?e.detail:e);
 			if(isMobile && e.targetTouches.length>1) return ;
 
 			var rect = this.getBoundingClientRect(),
@@ -2257,12 +2344,24 @@
 					}
 
 					if(scrollObj.scrollObj.x.coverWidth>0) {
-						scrollObj.scroll({type: "x", distance: moveX, from: params.id, scale: scrollObj.scrollObj.x.moveWidth/scrollObj.scrollObj.x.coverWidth});
+						scrollObj.scroll({
+							type: "x", 
+							from: params.id,
+							distance: scrollObj.scrollObj.x.left+moveX,
+							coverWidth: scrollObj.scrollObj.x.coverWidth
+						});
+
 						mouseX = posX;
 					}
 
 					if(scrollObj.scrollObj.y.coverHeight>0) {
-						scrollObj.scroll({type: "y", distance: moveY, from: params.id, scale: scrollObj.scrollObj.y.moveHeight/scrollObj.scrollObj.y.coverHeight});
+						scrollObj.scroll({
+							type: "y", 
+							from: params.id,
+							distance: scrollObj.scrollObj.y.top+moveY,
+							coverHeight: scrollObj.scrollObj.y.coverHeight
+						});
+
 						mouseY = posY;
 					}
 				}
@@ -2339,12 +2438,19 @@
 		self.bufferCanvas = bufferCanvas2;
 
 		if(!_data) {
-			var _n = self.tab.build.call(self, mainCanvas, 0);
+			var _n = self.tab.build.call(self, mainCanvas, {type: 0});
 			self.tab.active.call(self, _n);
 		} else {
 			Object.keys(_data).sort(function(a, b) {return a-b}).forEach(function(key) {
 				var val = _data[key];
-				var _n = self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, val.type, val.data, {id: key, name: val.tabName}, val.from);
+
+				var _n = self.tab.build.call(self, 0===val.type?mainCanvas:bufferCanvas4, {
+					type: val.type,
+					data: val.data,
+					id: key, 
+					name: val.tabName,
+					from: val.from
+				});
 
 				if(val.splitPage) {
 					var pageObj = new Page({

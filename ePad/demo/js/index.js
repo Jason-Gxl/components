@@ -23,7 +23,7 @@ document.getElementById("show_btn").addEventListener("click", function() {
 		files: files,
 		newTab: true,
 		isShow: true,
-		tabName: tabNameInput.value || "",
+		tabName: tabNameInput.value || ""
 		//tabId: Date.now()
 	};
 
@@ -32,8 +32,9 @@ document.getElementById("show_btn").addEventListener("click", function() {
 
 var pad1 = wPad.init({
 	id: 1,
-	size: "16:9",
-	//layout: "leftTop",
+	// size: "16:9",
+	layout: "leftTop",
+	super: true,
 	noToolbar: false,
 	// data: data,
 	noTab: false,
@@ -47,40 +48,40 @@ var pad1 = wPad.init({
 	fontSize: 30,
 	// toolbars: ["pen", "line", "text", "image", "export", "clear"],
 	onRender: function(data) {
-		pad2.render(data);
+		// pad2.render(data);
 		console.log("pad1 onRender");
 	},
 	onShowFiles: function(data) {
-		pad2.showFiles(data);
+		// pad2.showFiles(data);
 		console.log("pad1 onShowFiles");
 	},
 	onMousemove: function(data) {
-		pad2.mouseCtrl(data);
+		// pad2.mouseCtrl(data);
 		console.log("pad1 onMousemove");
 	},
 	onClear: function(data) {
-		pad2.clear(data);
+		// pad2.clear(data);
 		console.log("pad1 onClear");
 	},
 	onTabChange: function(id) {
-		pad2.changeTab(id);
+		// pad2.changeTab(id);
 		console.log("pad1 onTabChange");
 	},
 	onTabRemove: function(id) {
-		pad2.removeTab(id);
+		// pad2.removeTab(id);
 		console.log("pad1 onTabRemove");
 	},
 	onPageTurn: function(id, pageNumber, data) {
-		pad2.turnPage(id, pageNumber);
+		// pad2.turnPage(id, pageNumber);
 		console.log("pad1 onPageTurn");
 	},
 	onScroll: function(data) {
-		pad2.scroll(data);
+		// pad2.scroll(data);
 		console.log(data);
 	}
 });
 
-var pad2 = wPad.init({
+/*var pad2 = wPad.init({
 	id: 2,
 	size: "16:9",
 	noToolbar: true,
@@ -122,4 +123,4 @@ var pad2 = wPad.init({
 		// pad1.scroll(data);
 		console.log(data);
 	}
-});
+});*/

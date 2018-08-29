@@ -35,11 +35,12 @@
     bottom: 10px;
     z-index: 100;
     line-height: 30px;
+    color: #fff;
 }
 
 .pad-wrap .split-page-wrap a {
 	text-decoration: none;
-    color: #444;
+    color: #fff;
     width: 30px;
     height: 30px;
     border: solid 1px #cdcdcd;
@@ -68,10 +69,10 @@
 }
 
 .pad-wrap .split-page-wrap .page-number-input {
-    width: 30px;
+    width: 32px;
     text-align: center;
-    line-height: 27px;
-    height: 28px;
+    line-height: 31px;
+    height: 32px;
     padding: 0;
     margin: 0;
     outline: none;
@@ -79,6 +80,16 @@
     border-radius: 3px;
     border: solid #cdcdcd 1px;
     background: rgba(0, 0, 0, 0.1);
+    font-weight: bold;
+    color: #fff;
+    font-size: 16px;
+}
+
+.pad-wrap .split-page-wrap .split-page {
+	background: rgba(0, 0, 0, 0.5);
+	padding: 3px 10px;
+	border-radius: 5px;
+	font-weight: bold;
 }
 
 .pad-wrap .split-page-wrap .no {
@@ -269,7 +280,7 @@
 }
 
 .pad-wrap .can-wrap canvas.buffer-can-3 {
-	z-index: 7;
+	z-index: 0;
 }
 
 .pad-wrap .can-wrap canvas.main-can {
@@ -282,6 +293,9 @@
     z-index: 0;
     width: 1px;
     border: 0;
+    border-bottom: solid 2px #63B8FF;
+    box-sizing: border-box;
+    min-width: 80px;
     padding: 0;
     outline: 0;
     margin: 0;
@@ -425,3 +439,12 @@
 	width: 100%;
 }
 /* no toolbar , no tab */
+
+.pad-wrap .export-image {
+	position: absolute;
+	width: 0;
+	height: 0;
+	visibility: hidden;
+	top: 0;
+	left: 0;
+}
