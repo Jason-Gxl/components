@@ -47,6 +47,7 @@
 			background: "#fff",
 			eraserSize: 5,
 			ferulaSize: 5,
+			tabLimit: 20,
 			toolbars: isMobile?["pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear"]:["ferula", "pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear", "color"]
 		},
 		childToolbars = {
@@ -1137,6 +1138,11 @@
 			self.build = function(canvas, _params) {
 				if(!canvas) return ;
 
+				if(idList.length>=this.params.tabLimit) {
+					"[object Function]"===toString.call(this.params.onError) && this.params.onError({code: 0, message: "白板页签已达上限"});
+					return ;
+				}
+
 				var that = this,
 					type = _params.type,
 					_data = _params.data,
@@ -1186,6 +1192,7 @@
 					from: from
 				};
 
+				self.resizeTab();
 				if(_params.name) that.container[_id].tabName = _params.name;
 				return _id;
 			};
@@ -1226,6 +1233,15 @@
 				saving = true;
 			};
 
+			self.resizeTab = function() {
+				var totalWidth = tabWrap.clientWidth,
+					tabCount = idList.length,
+					width = totalWidth/tabCount;
+
+				width = width>112?112:width;
+				tabWrap.style.setProperty("--tab-width", width-12 + "px");
+			};
+
 			self.remove = function(_id) {
 				var self = this,
 					li = tabMap[_id],
@@ -1245,6 +1261,7 @@
 					self.tab.active.call(self, _id);
 				}
 				
+				self.tab.resizeTab();
 				!self.params.noCache && window.localStorage.setItem(self.id+"_pad", JSON.stringify(self.container));
 			};
 
@@ -1444,10 +1461,7 @@
 
 		this.pre = function() {
 			currentPage--;
-
-			this.go(currentPage, function() {
-				that.params.onPageTurn && that.params.onPageTurn(tabId, currentPage, _data[currentPage-1][0]);
-			});
+			this.go(currentPage);
 		};
 
 		var render = function(pageNumber, start, callback) {
@@ -1480,12 +1494,12 @@
 			}
 		};
 
-		this.go = function(pageNumber, callback) {
+		this.go = function(pageNumber) {
 			pageNumber = pageNumber<=1?1:pageNumber;
 			pageNumber = pageNumber>=total?total:pageNumber;
 
 			render(pageNumber, 0, function() {
-				"[object Function]" === toString.call(callback) && callback();
+				that.params.onPageTurn && that.params.onPageTurn(tabId, pageNumber, _data[pageNumber-1][0]);
 			});
 
 			currentPage = pageNumber;
@@ -1508,10 +1522,7 @@
 
 		this.next = function() {
 			currentPage++;
-
-			this.go(currentPage, function() {
-				that.params.onPageTurn && that.params.onPageTurn(tabId, currentPage, _data[currentPage-1][0]);
-			});
+			this.go(currentPage);
 		};
 
 		this.show = function() {
@@ -1978,6 +1989,7 @@
 		var oldAvilWidth = canvasWrap.clientWidth, oldAvilHeight = canvasWrap.clientHeight;
 
 		ele.redefineEvent("resize", "sizeChange", window);
+
 		ele.addEvent(window, "sizeChange", function() {
 			var avilWidth = canvasWrap.clientWidth,
 				avilHeight = canvasWrap.clientHeight;
@@ -1988,6 +2000,8 @@
 				oldAvilWidth = avilWidth;
 				oldAvilHeight = avilHeight;
 			}
+
+			self.tab.resizeTab();
 		});
 
 		var resizePad = function(w, h) {

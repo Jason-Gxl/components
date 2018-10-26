@@ -70,6 +70,7 @@ pad.render(data);
 |noCache|Boolean|表示白板数据是否要在本地存储，默认存储|
 |noToolbar|Boolean|表示是否显示工具条，默认为false|
 |noTab|Boolean|表示是否显示下方的标签条，默认为false|
+|tabLimit|Number|白板页签上限|
 |splitpageLayout|String|表示分页页码显示在什么位置，["left", "cetner", "right"]，默认为:right|
 |toolbars|Array|工具列表，默认："ferula", "pen", "line", "rectangle", "round", "text", "image", "eraser", "export", "clear", "color"|
 |onRender|Function|白板操作的回调，当用户在白板上做任务操作，都会触发此回调，回调接受一个参数，为当前白板操作生成的数据，此数据可以直接传入需要同步的白板的render接口进行图像绘制|
@@ -80,6 +81,13 @@ pad.render(data);
 |onPageTurn|Function|如果演示的文档有多页时会分页，切页时触发些回，回调接受一个参数，此参数直接传入需要同步的白板的turnPage接口|
 |onShowFiles|Function|演示文档时的回调|
 |onScroll|Function|滚动事件|
+|onError|Function|错误上报事件|
+
+### 错误码表
+
+|错误码|说明|
+|------|----|
+|0|白板页签达到上限|
 
 ### 接口
 

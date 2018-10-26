@@ -43,7 +43,7 @@ var pad1 = wPad.init({
 	wrap: document.getElementById("pad1"),
 	background: "#fff",
 	autoSaveTime: 5,
-	disable: false,
+	// disable: true,
 	noCache: false,
 	fontSize: 30,
 	// toolbars: ["pen", "line", "text", "image", "export", "clear"],
